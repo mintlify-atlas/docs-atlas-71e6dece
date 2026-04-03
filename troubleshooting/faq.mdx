@@ -1,0 +1,161 @@
+---
+title: "Frequently asked questions"
+description: "Answers to common questions about Proton VPN for Android — plans, protocols, privacy, and more."
+---
+
+<AccordionGroup>
+  <Accordion title="Is Proton VPN free? What are the plan differences?">
+    Yes. Proton VPN has a permanently free tier with no data cap, no speed throttling, and no advertising. It is funded by paid subscribers rather than by selling user data.
+
+    | Feature | Free | Plus |
+    |---------|------|------|
+    | Data limit | None | None |
+    | Simultaneous connections | 1 | 10 |
+    | Server countries | Limited (a small set) | 90+ |
+    | SecureCore | No | Yes |
+    | Streaming servers | No | Yes |
+    | P2P servers | No | Yes |
+    | NetShield (ad blocking) | No | Yes |
+    | Custom DNS | No | Yes |
+
+    You can upgrade to Plus from within the app or from [proton.me/pricing](https://proton.me/pricing).
+  </Accordion>
+
+  <Accordion title="How many devices can I connect simultaneously?">
+    The number of simultaneous connections depends on your plan:
+
+    - **Free plan**: 1 device at a time
+    - **Plus plan**: up to 10 devices at a time
+
+    A "connection" counts any active VPN session authenticated to your account. If you reach the limit, you will see a "Maximum sessions reached" error on the next device you try to connect. Disconnect on another device first, or end sessions remotely from [account.proton.me](https://account.proton.me).
+  </Accordion>
+
+  <Accordion title="Does Proton VPN keep logs?">
+    Proton VPN has a strict no-logs policy for VPN traffic. The company does not record which websites you visit, which IP addresses you connect to, or when you connect.
+
+    Proton does retain minimal account-level data required to operate the service (such as your account creation timestamp). This is described in detail in the [Proton Privacy Policy](https://proton.me/legal/privacy).
+
+    The app does write local logs to your device for debugging purposes. These logs contain connection metadata (servers used, protocols, error codes) and are only sent to Proton if you choose to attach them to a bug report. They do not contain browsing content.
+  </Accordion>
+
+  <Accordion title="What is the difference between WireGuard UDP, WireGuard TCP, and Stealth?">
+    All three options use the WireGuard protocol for encryption, but they differ in how they transmit data.
+
+    **WireGuard (UDP)**
+
+    - Default and fastest option — sends packets over UDP with minimal overhead
+    - Best throughput in most conditions
+    - May be blocked on some restrictive networks (hotels, corporate firewalls) that block non-HTTP UDP traffic
+
+    **WireGuard TCP**
+
+    - Sends WireGuard packets over TCP instead of UDP
+    - TCP traffic is less commonly blocked than non-standard UDP, making it more reliable on restrictive networks
+    - Slightly higher latency than UDP due to TCP's acknowledgement overhead
+
+    **Stealth (WireGuard TLS)**
+
+    - Wraps WireGuard inside TLS, making the traffic look like ordinary HTTPS
+    - Most effective at bypassing deep packet inspection (DPI) and VPN-blocking systems
+    - Slightly higher latency than plain WireGuard but highest compatibility on censored networks
+
+    **Which should you use?**
+
+    Start with **Smart** protocol, which automatically selects the best option. If you want to pin a protocol, use WireGuard UDP for speed, WireGuard TCP for moderate firewall bypass, or Stealth for heavily censored networks.
+
+    See [VPN protocols](/connections/protocols) for a full comparison.
+  </Accordion>
+
+  <Accordion title="Can I use Proton VPN to access streaming services?">
+    Yes, on the Proton VPN Plus plan. Streaming-optimised servers are available in many countries and are labelled in the server list with a streaming icon.
+
+    Streaming on the free plan is not supported. Free servers are not optimised for streaming and are not likely to be accepted by major streaming platforms.
+
+    If a streaming service is not working on a Plus server:
+
+    1. Try a different server in the same country — streaming availability can vary between servers.
+    2. Clear your browser or app cache, as cached location data may override the new IP.
+    3. Disable NetShield temporarily, as some ad-blocking rules can interfere with streaming scripts.
+    4. If the problem persists, submit a bug report categorised as **Streaming** so the team can investigate.
+  </Accordion>
+
+  <Accordion title="Why does my IP address still show my country when using VPN?">
+    If an IP lookup tool still shows your real country after connecting to VPN, there are a few possible explanations:
+
+    - **IPv6 leak** — Proton VPN tunnels IPv4 by default. If your device uses IPv6 and it is not tunnelled, IPv6-based geolocation will still show your real location. The app disables IPv6 by default to prevent this, but check that this setting has not been changed.
+    - **DNS leak** — your DNS queries may be going to your ISP's resolver instead of through the tunnel. Check **Settings > Custom DNS** and ensure no custom DNS is set that bypasses the tunnel.
+    - **WebRTC** — some browsers expose your real IP via WebRTC even when a VPN is active. Install a browser extension that blocks WebRTC, or test in a browser with WebRTC disabled.
+    - **Geolocation API** — your device's location services (GPS, Wi-Fi positioning) are independent of your IP. If an app uses device GPS rather than IP geolocation, it will still show your real location.
+    - **Cached DNS** — some IP lookup tools cache results. Try a different tool or wait for the cache to expire.
+  </Accordion>
+
+  <Accordion title="How do I verify the APK signature?">
+    All Proton VPN APKs distributed outside of F-Droid (Google Play, GitHub Releases) are signed with the same certificate. Verifying the signature confirms the APK has not been tampered with.
+
+    **Using apksigner (Android SDK)**
+
+    ```bash
+    apksigner verify --print-certs ProtonVPN.apk
+    ```
+
+    Compare the SHA-256 certificate fingerprint against the value published in the [GitHub repository](https://github.com/ProtonVPN/android-app).
+
+    **Using Android's package manager**
+
+    After installing the APK, run:
+
+    ```bash
+    adb shell pm dump ch.protonvpn.android | grep -A 5 "Signing certificates"
+    ```
+
+    The fingerprint should match the published value.
+
+    <Note>
+      F-Droid builds are signed by F-Droid's own key, not Proton's. The F-Droid signature will differ from the Google Play and GitHub signatures. Both are legitimate; they just cannot be installed side-by-side on the same device.
+    </Note>
+  </Accordion>
+
+  <Accordion title='What does the "Smart" protocol do?'>
+    Smart protocol is not a single protocol — it is an automatic selection mechanism. When you connect with Smart protocol enabled, the app probes the target server across WireGuard transport options and picks the one that responds first.
+
+    The probing order (based on `SmartProtocolConfig`) is:
+
+    - WireGuard (UDP)
+    - WireGuard TCP
+    - WireGuard TLS (Stealth)
+
+    Smart protocol is useful on restrictive networks (hotels, airports, corporate networks) where some protocols or ports are blocked. It trades a slightly longer initial connection time for a higher probability of connecting successfully.
+
+    Enable it under **Settings > Protocol > Smart**.
+  </Accordion>
+
+  <Accordion title="Can I use Proton VPN on a rooted device?">
+    The app runs on rooted devices, but with some caveats:
+
+    - **Root access by other apps** — on a rooted device, other apps with root access could potentially intercept traffic before it enters the VPN tunnel. Proton VPN cannot protect against a compromised root environment.
+    - **VPN permission model** — Android's `VpnService` API (used by Proton VPN) does not require root. The app does not need or request root access itself.
+    - **Attestation** — some features that rely on Android's hardware-backed attestation (such as certain network security checks) may report failure on rooted devices.
+
+    For maximum security, use the app on a non-rooted device with a locked bootloader.
+  </Accordion>
+
+  <Accordion title="How does SecureCore protect me differently from regular VPN?">
+    A regular VPN connection has one hop: your device connects to a VPN server, and that server exits to the internet. The VPN server operator (and anyone monitoring traffic at the server's data centre) can see which IP address connected to which server and when.
+
+    SecureCore adds an entry hop through a server in a privacy-friendly country (Switzerland, Iceland, or Sweden) that Proton owns and operates in its own data centres. Traffic flow:
+
+    ```
+    Your device → SecureCore entry server (CH/IS/SE) → exit server → internet
+    ```
+
+    This means:
+
+    - The exit server only sees traffic from the SecureCore entry server, not your real IP.
+    - An attacker who compromises the exit server still cannot determine your original IP.
+    - The entry server is in a jurisdiction with strong privacy laws and is operated by Proton staff.
+
+    The trade-off is increased latency and reduced throughput due to the extra hop.
+
+    See [SecureCore](/connections/secure-core) for configuration details.
+  </Accordion>
+</AccordionGroup>

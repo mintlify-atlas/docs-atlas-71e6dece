@@ -1,0 +1,178 @@
+---
+title: "Auto-login for managed devices"
+description: "How Proton VPN authenticates automatically on managed devices using MDM-pushed credentials or tokens."
+---
+
+When an MDM pushes a [managed configuration](./managed-config) to a device, Proton VPN detects it and authenticates the user automatically — no manual sign-in required. This is the core of the enterprise deployment workflow: the administrator configures credentials once in the MDM console, and every enrolled device logs in without user interaction.
+
+## Authentication methods
+
+Two authentication methods are supported. They are configured via the same managed configuration bundle; the app selects the method based on which keys are present.
+
+<CardGroup cols={2}>
+  <Card title="Token-based login" icon="key">
+    An MDM-issued token is exchanged directly with Proton's backend. No Proton account password is required on the device.
+  </Card>
+  <Card title="Username/password login" icon="user">
+    Standard Proton account credentials. Simpler to configure but carries additional security risk if credentials are exposed.
+  </Card>
+</CardGroup>
+
+---
+
+## Token-based login
+
+Token-based login is the recommended method for enterprise deployments.
+
+The managed config bundle must contain the `token` and `group` keys. The optional `deviceId` key scopes the session to a specific device.
+
+```json
+{
+  "managedProperty": [
+    { "key": "token",    "valueString": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..." },
+    { "key": "group",    "valueString": "acme-corp-vpn" },
+    { "key": "deviceId", "valueString": "device-7a3f" }
+  ]
+}
+```
+
+Internally, the app calls `CreateLoginTokenMdmSession` with the three values, then runs `PostLoginTokenMdmAccountSetup` to finalize the session:
+
+```kotlin
+// AutoLogin.kt — token login flow
+val sessionInfo = createLoginTokenMdmSession(config.token, config.group, config.deviceId)
+when (val result = postLoginTokenMDMAccountSetup(sessionInfo.userId)) {
+    is PostLoginAccountSetup.UserCheckResult.Error ->
+        Result.failure(AutoLoginException(result.localizedMessage))
+    PostLoginAccountSetup.UserCheckResult.Success ->
+        Result.success(sessionInfo.userId)
+}
+```
+
+### How `AutoLoginConfig.Token` identifies a session
+
+The app computes a stable SHA-256 identifier from the three token fields:
+
+```kotlin
+MessageDigest.getInstance("SHA-256").apply {
+    update(config.token.toByteArray())
+    update(config.group.toByteArray())
+    config.deviceId?.let { update(it.toByteArray()) }
+}.digest().joinToString("") { "%02x".format(it) }
+```
+
+This `id` is stored on the `VpnUser` record. If the MDM pushes a new token bundle with different values, the computed ID changes and the app re-authenticates automatically.
+
+---
+
+## Username/password login
+
+<Warning>
+  Storing a Proton account password in a managed configuration bundle means it leaves your MDM server and is written to the device by the Android system. If the device is compromised, or if your MDM transmits the bundle unencrypted, the password can be exposed. Use token-based login unless you have a specific reason not to.
+</Warning>
+
+When `token` is absent or blank and both `username` and `password` are present, the app uses standard credential-based authentication:
+
+```json
+{
+  "managedProperty": [
+    { "key": "username", "valueString": "vpn-user@acme.com" },
+    { "key": "password", "valueString": "s3cr3t" }
+  ]
+}
+```
+
+The password is immediately encrypted using Android's `KeyStoreCrypto` before being passed to the authentication layer. It is never stored in plaintext on the device.
+
+```kotlin
+// AutoLogin.kt — username/password login flow
+val encryptedPassword = config.password.encrypt(keyStoreCrypto)
+val sessionInfo = createLoginSession(config.username, encryptedPassword, AccountType.Username)
+```
+
+For the `UsernamePassword` variant, the session `id` is simply the username string (rather than a hash), since the username is not a secret.
+
+---
+
+## How auto-login is triggered
+
+The `AutoLoginManager` observes the `ManagedConfig` flow. Every time the MDM pushes a new configuration — or the app starts with an existing one — the following logic runs:
+
+<Steps>
+  <Step title="Configuration arrives">
+    The MDM pushes an app restrictions bundle. Android broadcasts `ACTION_APPLICATION_RESTRICTIONS_CHANGED`. `ManagedConfig` reads the new bundle and emits the parsed `AutoLoginConfig` to its `StateFlow`.
+  </Step>
+  <Step title="State is evaluated">
+    `AutoLoginManager` collects the config and checks the current user state:
+
+    - **No config** → state is `Disabled`; any ongoing login is cancelled.
+    - **Config present, VPN user logged in with matching ID** → state is `Success`; nothing to do.
+    - **Config present, VPN user logged in with different ID** → the MDM token has changed; re-login is triggered.
+    - **Config present, partial user (no VPN user yet)** → state is `PartiallyLoggedIn`; waiting for VPN account setup.
+    - **Config present, no user at all** → login is triggered immediately.
+  </Step>
+  <Step title="Login executes">
+    `AutoLogin.execute(config)` is called. If a previous login attempt is in flight, it is cancelled first. If a different user is already logged in, they are logged out before the new login begins.
+  </Step>
+  <Step title="Notification feedback">
+    If the app is in the background, a system notification is shown to indicate progress ("Setting up ProtonVPN…") and the outcome ("ProtonVPN setup successfully." or an error message with a prompt to open the app).
+  </Step>
+</Steps>
+
+### State machine
+
+```kotlin
+// AutoLoginManager.kt — state transitions
+sealed class AutoLoginState {
+    data object Disabled          : AutoLoginState()  // No managed config
+    data object Ongoing           : AutoLoginState()  // Login in progress
+    data object PartiallyLoggedIn : AutoLoginState()  // User exists, VPN user not yet ready
+    data object Success           : AutoLoginState()  // Logged in and ready
+    data class  Error(val e: Throwable) : AutoLoginState()
+}
+```
+
+If login fails, `AutoLoginState.Error` is emitted and the error screen is shown with **Retry**, **Report issue**, and **Show logs** actions.
+
+---
+
+## Auto-reconnect on boot
+
+Proton VPN holds the `RECEIVE_BOOT_COMPLETED` permission and registers `AutoConnectBootReceiver` to handle `ACTION_BOOT_COMPLETED`. On devices where the **Auto-connect on boot** setting is enabled, this restores the VPN connection after a reboot — important for unattended kiosk or managed devices where no user is present to reconnect manually.
+
+The receiver is intentionally minimal to avoid being killed by the system under time pressure:
+
+```kotlin
+// AutoConnectBootReceiver.kt
+override fun onReceive(context: Context, intent: Intent) {
+    if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+    AutoConnectOnBootWorker.enqueue(workManager.get())
+}
+```
+
+Actual connection logic is delegated to `AutoConnectOnBootWorker` (a `WorkManager` worker) with a 5-second initial delay, which gives the system time to stabilise before the VPN tunnel is established.
+
+<Note>
+  On Amazon Fire TV devices, the system can impose strict time limits on `BOOT_COMPLETED` receivers. The receiver therefore does as little work as possible and offloads to WorkManager. There may still be a delay of up to 30 seconds before the VPN connects after boot on these devices.
+</Note>
+
+---
+
+## Security considerations
+
+<AccordionGroup>
+  <Accordion title="Token revocation">
+    If a device is lost or stolen, revoke the MDM token from your EMM console. Push an empty or updated configuration bundle to the device. `AutoLoginManager` cancels any ongoing session and transitions to `Disabled` state as soon as the null config is received.
+  </Accordion>
+  <Accordion title="Re-authentication on config change">
+    Any change to the `token`, `group`, or `deviceId` values causes the session ID to change. The app detects the mismatch and re-authenticates automatically. Use this behaviour intentionally when rotating tokens: push the new bundle and the device re-logs in without administrator intervention beyond the MDM push.
+  </Accordion>
+  <Accordion title="Protecting credentials in transit">
+    Managed configuration bundles are delivered from the EMM server to the device over the standard Android Enterprise DPC channel. Ensure your EMM enforces TLS for all policy delivery. For fully managed devices and work profiles, the bundle is isolated from other apps by the OS.
+  </Accordion>
+  <Accordion title="On-device credential handling">
+    - Passwords are encrypted with Android Keystore before any network call; they are never stored or transmitted in plaintext.
+    - Tokens are passed directly to Proton's API and are not persisted locally.
+    - The session ID stored on `VpnUser` is a SHA-256 hash of the token material, not the token itself.
+  </Accordion>
+</AccordionGroup>

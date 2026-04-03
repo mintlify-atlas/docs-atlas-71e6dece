@@ -1,0 +1,77 @@
+---
+title: "NetShield"
+description: "Block ads, trackers, and malware at the DNS level while connected to Proton VPN."
+keywords: ["netshield", "ad blocker", "tracker blocker", "malware blocking", "dns filtering"]
+---
+
+NetShield is a DNS-based filtering feature built into Proton VPN. When you connect to a VPN server, all DNS queries from your device pass through Proton's servers. NetShield intercepts those queries and blocks requests to domains associated with ads, trackers, and malware — before they ever reach your device.
+
+No extra software or browser extensions are required. NetShield works system-wide, covering all apps and browsers.
+
+<Note>
+  NetShield is available on **Proton VPN Plus** and higher plans. Free plan users can see the NetShield setting but must upgrade to enable it.
+</Note>
+
+## Modes
+
+NetShield has three modes. You can switch between them at any time from the settings panel — changes take effect immediately without reconnecting.
+
+<Tabs>
+  <Tab title="Off">
+    DNS filtering is disabled. All DNS queries pass through without modification.
+
+    Use this mode if you want full unfiltered browsing, or if you are troubleshooting a website that may be incorrectly blocked.
+  </Tab>
+  <Tab title="Block malware only">
+    Queries to known malware domains are blocked. Ads and trackers are not affected.
+
+    This is the lightest filtering mode. It adds a safety layer against malicious sites with minimal impact on regular browsing.
+  </Tab>
+  <Tab title="Block ads, trackers & malware">
+    All three categories are blocked: advertising networks, tracking pixels and analytics scripts, and malware domains.
+
+    This is the recommended mode for most users. It reduces page load times and data usage by preventing ad content from loading.
+  </Tab>
+</Tabs>
+
+## NetShield stats
+
+When NetShield is active in the **Block ads, trackers & malware** mode, the VPN home screen shows a live stats panel for the current session:
+
+| Stat | What it counts |
+|---|---|
+| Ads blocked | Domains serving advertisements that were blocked |
+| Trackers blocked | Domains used to track your behaviour across sites |
+| Data saved | Estimated bandwidth saved by not loading blocked content |
+
+Stats reset when you disconnect or reconnect.
+
+## How to enable NetShield
+
+<Steps>
+  <Step title="Open Settings">
+    Tap the **Settings** icon in the bottom navigation bar.
+  </Step>
+  <Step title="Tap NetShield">
+    Find **NetShield** in the settings list and tap it to open the NetShield sub-setting screen.
+  </Step>
+  <Step title="Toggle NetShield on">
+    Use the toggle to enable NetShield. Once enabled, the app defaults to **Block ads, trackers & malware** mode.
+  </Step>
+</Steps>
+
+## Limitations
+
+NetShield filters DNS queries only. It does not inspect the full content of network requests, so it cannot:
+
+- Block ads delivered from the same domain as the content you are loading (first-party ads)
+- Block tracking embedded directly in page HTML or JavaScript that does not make a separate DNS call
+- Decrypt or inspect HTTPS traffic
+
+Some ads and trackers may bypass NetShield depending on how they are served. For stronger ad blocking, NetShield can be combined with a browser-level content blocker.
+
+<Warning>
+  If you have custom DNS configured in Proton VPN settings, NetShield will be disabled automatically. Custom DNS and NetShield use the same DNS resolver mechanism and cannot run at the same time. A banner in the NetShield settings screen will explain this conflict and offer the option to disable custom DNS.
+</Warning>
+
+If your device has Android's **Private DNS** (DNS-over-TLS) enabled in system settings, NetShield will also be unavailable. Private DNS bypasses the VPN's DNS configuration. A conflict banner will appear with a link to open Android's network settings.

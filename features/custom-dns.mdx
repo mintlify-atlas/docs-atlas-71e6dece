@@ -1,0 +1,65 @@
+---
+title: "Custom DNS"
+description: "Override the default DNS servers used by Proton VPN with your own preferred DNS addresses."
+keywords: ["custom dns", "dns server", "dns override", "private dns", "netshield conflict"]
+---
+
+By default, Proton VPN routes your DNS queries through Proton's own DNS servers when you are connected. Custom DNS lets you replace these with DNS servers of your choice — for example, a privacy-focused public resolver, a family-filtering DNS service, or a self-hosted DNS server on your local network.
+
+DNS queries resolve hostnames (like `example.com`) to IP addresses. The DNS server you use can see all the domain names you visit, so the choice of DNS provider has privacy implications even when using a VPN.
+
+## How to configure custom DNS
+
+<Steps>
+  <Step title="Open Settings">
+    Tap the **Settings** icon in the bottom navigation bar.
+  </Step>
+  <Step title="Tap Custom DNS">
+    Find **Custom DNS** in the settings list and tap it to open the custom DNS screen.
+  </Step>
+  <Step title="Toggle custom DNS on">
+    Use the toggle to enable custom DNS. The server list will appear.
+  </Step>
+  <Step title="Add a DNS server">
+    Tap **Add DNS address** to open the input screen. Enter a valid IPv4 or IPv6 address for your DNS server (for example, `1.1.1.1` or `2606:4700:4700::1111`) and tap **Add**.
+
+    The address must be a valid IP address. Hostnames are not accepted.
+  </Step>
+  <Step title="Add additional servers (optional)">
+    You can add multiple DNS servers. Proton VPN will use them in the order listed. Drag entries using the handle on the left to reorder them. Swipe or tap the trash icon to remove an entry.
+  </Step>
+</Steps>
+
+<Info>
+  Changes to the custom DNS list take effect on the next VPN connection. If you are currently connected, a toast notification will appear reminding you to reconnect for the new settings to apply.
+</Info>
+
+## DNS validation
+
+When adding a DNS server, the app validates your input:
+
+| Error | Cause |
+|---|---|
+| Empty input | The address field was submitted blank |
+| Invalid input | The value is not a valid IPv4 or IPv6 address |
+| Duplicate input | The address is already in your list |
+
+## Interaction with NetShield
+
+Custom DNS and [NetShield](/features/netshield) cannot be used at the same time. NetShield works by directing your DNS queries through Proton's filtering resolver. When you supply a custom DNS server, your queries go to that server instead, and Proton's filtering layer is bypassed.
+
+When you add a DNS server while NetShield is active, the app shows a conflict dialog explaining that NetShield will be disabled. You can choose to proceed or cancel and keep NetShield enabled.
+
+Conversely, the NetShield settings screen shows a conflict banner when custom DNS is active, with an option to disable custom DNS and restore NetShield.
+
+## Conflicts with Android Private DNS
+
+Android supports a system-level **Private DNS** (DNS-over-TLS) setting, found under **Settings → Network & internet → Private DNS**. If Private DNS is configured on your device, it takes over DNS resolution at the OS level and overrides any DNS settings from the VPN, including Proton VPN's custom DNS.
+
+When Private DNS is detected, the custom DNS screen shows a conflict banner. You can tap **Open network settings** to navigate directly to the Android Private DNS setting. Disabling Private DNS in Android system settings allows custom DNS (or NetShield) to function normally.
+
+## Using Proton's DNS for privacy
+
+If your goal is to keep DNS queries private without using a third-party resolver, you do not need to configure anything. By default Proton VPN already routes DNS queries through Proton-operated servers as part of the encrypted VPN tunnel. Custom DNS is for users who specifically need to use a different resolver.
+
+If you want to use Proton's DNS server explicitly (for example, outside of the VPN or in another app), Proton operates public DNS servers. Consult the [Proton DNS documentation](https://proton.me/support/dns-leak-prevention) for current server addresses.

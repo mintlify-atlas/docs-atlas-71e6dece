@@ -1,0 +1,90 @@
+---
+title: "Settings overview"
+description: "A guide to every setting in Proton VPN for Android, from account management to connection preferences and appearance."
+keywords: ["settings", "configuration", "account", "theme", "notifications", "android"]
+---
+
+The Settings screen is the central place to manage your Proton VPN experience. You can reach it by tapping the **Settings** tab in the bottom navigation bar.
+
+## Account
+
+The Account section appears at the top of Settings when you are signed in. It shows your display name, email address, and current plan. Tapping the row opens the full account screen where you can manage your Proton account details.
+
+If you are not signed in, this section shows **Sign in** and **Sign up** options instead.
+
+<Info>
+  The account screen is not available when Proton VPN is deployed under a managed configuration (such as an MDM profile).
+</Info>
+
+## Default connection
+
+The **Default connection** setting controls which server or profile Proton VPN connects to when you tap the Quick Connect button.
+
+| Option | Behavior |
+|--------|----------|
+| Fastest | Connects to the fastest available server. This is the default. |
+| Last connection | Reconnects to the most recently used server. |
+| Specific country or profile | Connects to a server you have selected from your recents or saved profiles. |
+
+<Note>
+  Default connection is only available on paid plans. Free users always connect to the fastest available free server.
+</Note>
+
+## Connection settings
+
+The **Connection** category in Settings groups the options that affect how your VPN tunnel is established.
+
+<CardGroup cols={2}>
+  <Card title="Protocol settings" icon="shuffle" href="/settings/protocol-settings">
+    Choose between Smart, WireGuard UDP, WireGuard TCP, and Stealth (WireGuard TLS). Includes NAT type and LAN access controls.
+  </Card>
+  <Card title="Advanced settings" icon="sliders" href="/settings/advanced-settings">
+    Alternative routing (DoH), IPv6 support, NAT type, custom DNS, and LAN connection controls.
+  </Card>
+</CardGroup>
+
+The **Connection** category also includes a dedicated **VPN Accelerator** row. Tapping it opens a toggle sub-screen. VPN Accelerator requires a paid plan.
+
+## Theme
+
+Tap **Theme** under the General category to choose how the app looks.
+
+| Option | Description |
+|--------|-------------|
+| Light | Always uses the light colour scheme. |
+| Dark | Always uses the dark colour scheme. This is the default. |
+| System | Follows the system-level dark mode setting on your device. |
+
+The selection takes effect immediately without restarting the app.
+
+## Notifications
+
+Tap **Notifications** to open the Android system notification settings for Proton VPN. From there you can control which notification channels are enabled, including the persistent VPN active notification.
+
+<Note>
+  The Notifications row is only shown on Android 8.0 (Oreo) and later, where Android manages notification channels individually.
+</Note>
+
+## General
+
+The General category also contains:
+
+- **Change icon** — pick an alternative app icon for your home screen.
+- **Widget** — set up the Proton VPN home screen widget.
+
+## Support and about
+
+The Support category provides links to help resources:
+
+- **Help center** — opens the Proton support site in your browser.
+- **Report a bug** — submits a bug report with optional diagnostic logs.
+- **Debug logs** — opens the in-app log viewer.
+
+At the bottom of the Settings screen you will find the installed app version number. Tapping this area opens the third-party licence notices.
+
+## Help improve Proton
+
+The **Help improve Proton** category contains:
+
+- **Help fight censorship** — opt in or out of the Proton censorship-circumvention program (telemetry).
+- **Rate us** — opens the Play Store listing for Proton VPN.

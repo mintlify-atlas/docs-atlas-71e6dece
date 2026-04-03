@@ -1,0 +1,60 @@
+---
+title: "Kill switch"
+description: "Prevent your real IP address from being exposed if the VPN connection drops unexpectedly."
+keywords: ["kill switch", "ip leak", "always-on vpn", "block connections without vpn", "vpn drop protection"]
+---
+
+The kill switch blocks all internet traffic on your device the moment the VPN connection drops. Without it, your device automatically falls back to your regular internet connection when the VPN disconnects — briefly exposing your real IP address and sending traffic outside the encrypted tunnel. The kill switch prevents this by cutting off connectivity entirely until the VPN is restored.
+
+This matters most during:
+
+- Automatic VPN reconnections after a network change (switching from Wi-Fi to mobile data, or between networks)
+- Server failovers when the VPN protocol retries on a different server
+- Brief outages in your internet connection
+
+## How to enable the kill switch
+
+Proton VPN's kill switch on Android works through Android's built-in **Always-on VPN** and **Block connections without VPN** options. There is no separate kill switch toggle inside the Proton VPN app itself — you enable it through Android's VPN settings.
+
+<Warning>
+  Once **Block connections without VPN** is enabled, your device will have no internet access whenever Proton VPN is not connected. This includes when the VPN is disabled intentionally. Make sure you are comfortable with this behaviour before enabling it.
+</Warning>
+
+<Steps>
+  <Step title="Open the kill switch screen in Proton VPN">
+    In the Proton VPN app, go to **Settings** and tap **Kill switch**. The screen explains the feature and provides a button to open Android's VPN settings directly.
+  </Step>
+  <Step title="Open Android VPN settings">
+    Tap **Open Android VPN settings**. This takes you to your device's VPN management screen (the path varies slightly by Android version and manufacturer, but is typically under **Settings → Network & internet → VPN**).
+  </Step>
+  <Step title="Open Proton VPN settings">
+    Tap the gear icon next to **Proton VPN** in the list of VPN apps.
+  </Step>
+  <Step title="Enable Always-on VPN">
+    Toggle **Always-on VPN** on. This makes Android automatically launch and maintain the VPN connection on startup and after network changes.
+  </Step>
+  <Step title="Enable Block connections without VPN">
+    Toggle **Block connections without VPN** on. This is the kill switch. Android will drop all internet connectivity any time Proton VPN is not connected.
+  </Step>
+</Steps>
+
+## Always-on VPN and Block connections without VPN
+
+These are two distinct Android system settings that work together:
+
+| Setting | What it does |
+|---|---|
+| Always-on VPN | Tells Android to automatically connect Proton VPN at device startup and reconnect it after network interruptions. Without this, the VPN only runs when you manually start it. |
+| Block connections without VPN | The kill switch itself. Blocks all network traffic (both incoming and outgoing) when the VPN is not active. |
+
+You can enable **Always-on VPN** without enabling **Block connections without VPN**. In that case Android will try to keep the VPN running, but will fall back to a direct connection if it cannot reconnect immediately. Enabling both together gives you the full kill switch behaviour.
+
+## Impact on local network access
+
+When **Block connections without VPN** is active, Android blocks all traffic that is not routed through the VPN tunnel. This includes traffic to devices on your local network — printers, smart home devices, network-attached storage, and similar.
+
+If you need to maintain access to local network devices while the kill switch is enabled, you can use [split tunneling](/features/split-tunneling) to exclude specific apps or IP ranges from the VPN tunnel. Traffic excluded from the tunnel is not subject to the kill switch block.
+
+<Info>
+  The kill switch does not affect emergency calls. Android exempts cellular emergency services from VPN and network blocking rules.
+</Info>

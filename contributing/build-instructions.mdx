@@ -1,0 +1,117 @@
+---
+title: "Build instructions"
+description: "How to set up your environment and build the Proton VPN Android app from source."
+---
+
+## Prerequisites
+
+Before building, make sure you have the following installed:
+
+- **Android SDK** — required for compiling Android apps
+- **Android NDK** — required for native code compilation
+- **CMake** — used to build native libraries
+- **SWIG** — used to generate JNI bindings for native libraries
+
+Install the NDK, CMake, and SWIG via Android Studio's SDK Manager or the `sdkmanager` command-line tool.
+
+<Info>
+The Gradle daemon is enabled by default and the build is configured to use up to 6 GB of heap (`-Xmx6g`). Make sure your machine has enough available memory.
+</Info>
+
+## Cloning the repository
+
+```bash
+git clone https://github.com/ProtonVPN/android-app.git
+cd android-app
+```
+
+## Building the debug variant
+
+The standard debug build uses the `productionVanillaOpenSource` flavor combination:
+
+```bash
+./gradlew assembleProductionVanillaOpenSourceDebug
+```
+
+This produces a debug APK you can install on a device or emulator.
+
+## Building in Android Studio
+
+<Steps>
+  <Step title="Open the project">
+    Open Android Studio and select **File > Open**, then navigate to the cloned `android-app` directory.
+  </Step>
+  <Step title="Sync Gradle">
+    Android Studio will prompt you to sync the project. Click **Sync Now** to download all dependencies.
+  </Step>
+  <Step title="Select a build variant">
+    Open the **Build Variants** panel (View > Tool Windows > Build Variants) and select `productionVanillaOpenSourceDebug` or another supported variant.
+  </Step>
+  <Step title="Run or build">
+    Click **Run** to build and deploy to a connected device, or use **Build > Make Project** to compile without deploying.
+  </Step>
+</Steps>
+
+## Build flavors
+
+The app uses three flavor dimensions that combine to produce each build variant:
+
+| Dimension | Options | Description |
+|-----------|---------|-------------|
+| `environment` | `production`, `black` | `production` targets the live Proton API. `black` targets internal test environments. |
+| `functionality` | `vanilla`, `google` | `google` includes Google Play Services integrations (in-app purchases, reviews, etc.). `vanilla` does not. |
+| `distribution` | `openSource`, `playStore`, `amazon`, `direct`, `dev` | Controls the distribution channel and store-specific behaviour. |
+
+<Info>
+Not all flavor combinations are valid. For example, `google` functionality is only paired with `playStore` distribution, and `vanilla` is paired with `openSource`, `amazon`, or `direct`. The `black` environment is only built for `playStore` and `direct` distributions.
+</Info>
+
+### Common variant names
+
+<CodeGroup>
+
+```bash Open source debug
+./gradlew assembleProductionVanillaOpenSourceDebug
+```
+
+```bash Google Play debug
+./gradlew assembleProductionGooglePlayStoreDebug
+```
+
+```bash Black (test environment) debug
+./gradlew assembleBlackGooglePlayStoreDebug
+```
+
+</CodeGroup>
+
+## Building a release APK
+
+Release builds require signing keys. Provide them as Gradle properties:
+
+```bash
+./gradlew assembleProductionVanillaOpenSourceRelease \
+  -PkeyStoreFilePath=<path/to/keystore> \
+  -PkeyStoreKeyAlias=<alias> \
+  -PkeyStorePassword=<keystore-password> \
+  -PkeyStoreKeyPassword=<key-password>
+```
+
+Replace the placeholders with the actual values for your keystore.
+
+<Warning>
+All official Proton VPN builds (except F-Droid) are signed with the same Proton key. The SHA-256 fingerprint of the signing certificate for `ch.protonvpn.android` is:
+
+```
+DC:C9:43:9E:C1:A6:C6:A8:D0:20:3F:34:23:EE:42:BC:C8:B9:70:62:8E:53:CB:73:A0:39:3F:39:8D:D5:B8:53
+```
+</Warning>
+
+## Updating license attributions
+
+After adding or updating any open source dependency, regenerate the license attribution file:
+
+```bash
+./gradlew updateLicensesJson
+```
+
+This runs `licenseProductionGooglePlayStoreReleaseReport` and writes the output to `app/src/main/assets/oss_licenses/generated_licenses.js`.

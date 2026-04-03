@@ -1,0 +1,191 @@
+---
+title: "Managed configuration"
+description: "Deploy Proton VPN on managed Android devices using Android Enterprise and EMM/MDM managed app configuration."
+---
+
+Proton VPN supports Android's managed app configuration standard, which lets IT administrators push authentication credentials and configuration to the app via an EMM (Enterprise Mobility Management) or MDM (Mobile Device Management) platform — no user interaction required.
+
+When a managed configuration is detected, the app reads it automatically and initiates [auto-login](./auto-login).
+
+## How it works
+
+Android Enterprise defines a mechanism called **App Restrictions** (`android.content.APP_RESTRICTIONS`). Your EMM console pushes a bundle of key/value pairs to the device; the app receives them via Android's `RestrictionsManager` API and reacts to changes in real time.
+
+Proton VPN registers a `BroadcastReceiver` for `ACTION_APPLICATION_RESTRICTIONS_CHANGED`, so any update pushed by the MDM is picked up immediately without requiring a restart.
+
+```kotlin
+// ManagedConfig.kt — how the app reads restrictions
+val restrictionsManager = context.getSystemService(RestrictionsManager::class.java)
+val configFlow = MutableStateFlow(restrictionsManager.getConfig())
+
+context.registerBroadcastReceiver(
+    IntentFilter(Intent.ACTION_APPLICATION_RESTRICTIONS_CHANGED)
+) {
+    configFlow.value = restrictionsManager.getConfig()
+}
+```
+
+The app is considered **managed** (`ManagedConfig.isManaged == true`) whenever a valid configuration bundle is present. Removing the bundle from the MDM reverts the device to standard interactive login.
+
+---
+
+## Configuration keys
+
+The following restriction keys are declared in `res/xml/app_restrictions.xml` and are read by the app at runtime. All keys have type `string`.
+
+### Token-based login
+
+Preferred for enterprise deployments. The token is issued by Proton and scoped to a group.
+
+<ParamField path="token" type="string" required>
+  MDM-issued authentication token. When this key is present and non-blank (and `group` is also set), the app uses token-based login and ignores `username`/`password`.
+</ParamField>
+
+<ParamField path="group" type="string" required>
+  The organizational group or tenant identifier associated with the token. Required when `token` is set.
+</ParamField>
+
+<ParamField path="deviceId" type="string">
+  Optional unique identifier for the device. Allows Proton's backend to scope the session to a specific device. If omitted, the session is not device-scoped.
+</ParamField>
+
+### Username/password login
+
+<Warning>
+  Storing plaintext credentials in a managed configuration bundle is a security risk. If your MDM transmits the bundle over an unencrypted channel, or if the device is compromised, credentials can be exposed. Use token-based login whenever possible.
+</Warning>
+
+<ParamField path="username" type="string">
+  Proton account username. Used only when `token` is absent or blank.
+</ParamField>
+
+<ParamField path="password" type="string">
+  Proton account password. Used together with `username` when token-based login is not configured. The password is encrypted with Android's `KeyStoreCrypto` before being passed to the authentication layer — it is never stored in plaintext on the device.
+</ParamField>
+
+---
+
+## Priority rules
+
+The app applies the following logic when parsing the restriction bundle:
+
+1. If `token` is non-blank **and** `group` is set → use `AutoLoginConfig.Token`
+2. Otherwise, if `username` **and** `password` are both non-blank → use `AutoLoginConfig.UsernamePassword`
+3. If neither condition is met → no managed configuration is active
+
+```kotlin
+// ManagedConfig.kt — key resolution logic
+val token = restrictions.getString("token")
+val group = restrictions.getString("group")
+
+return if (!token.isNullOrBlank() && group != null) {
+    AutoLoginConfig.Token(token, group, deviceId)
+} else {
+    val username = restrictions.getString("username")
+    val password = restrictions.getString("password")
+    if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+        AutoLoginConfig.UsernamePassword(username, password)
+    } else null
+}
+```
+
+---
+
+## Setting up managed configuration in your MDM
+
+<Tabs>
+  <Tab title="Google Workspace / Android Enterprise">
+    <Steps>
+      <Step title="Open the Admin console">
+        Go to **Devices → Mobile & endpoints → Apps** and select Proton VPN from your managed app catalog. If it isn't listed, add it from the Play Store.
+      </Step>
+      <Step title="Open Managed configuration">
+        Select the app, then choose **Managed configuration**. The console reads the app's declared restrictions from `app_restrictions.xml` and renders a form with the five keys.
+      </Step>
+      <Step title="Enter the configuration values">
+        Fill in either the token + group fields (recommended), or the username + password fields. Leave unused fields blank.
+
+        ```json
+        {
+          "kind": "androidenterprise#managedConfiguration",
+          "productId": "app:com.protonvpn.android",
+          "managedProperty": [
+            { "key": "token",    "valueString": "YOUR_MDM_TOKEN" },
+            { "key": "group",    "valueString": "your-org-group" },
+            { "key": "deviceId", "valueString": "device-001" }
+          ]
+        }
+        ```
+      </Step>
+      <Step title="Assign and save">
+        Assign the configuration to the target organizational unit or device group, then save. The bundle is pushed to enrolled devices immediately.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Microsoft Intune">
+    <Steps>
+      <Step title="Create an app configuration policy">
+        In the Intune admin center, go to **Apps → App configuration policies → Add → Managed devices**. Set the platform to **Android Enterprise** and select Proton VPN as the target app.
+      </Step>
+      <Step title="Configure settings">
+        Choose **Use configuration designer** and add the five restriction keys with their values. Alternatively, use the JSON editor:
+
+        ```json
+        {
+          "kind": "AndroidEnterprise#managedConfiguration",
+          "productId": "app:com.protonvpn.android",
+          "managedProperty": [
+            { "key": "token",    "valueString": "YOUR_MDM_TOKEN" },
+            { "key": "group",    "valueString": "your-org-group" },
+            { "key": "deviceId", "valueString": "" }
+          ]
+        }
+        ```
+      </Step>
+      <Step title="Assign the policy">
+        Assign the policy to the relevant Azure AD group and save. Devices receive the configuration on the next MDM sync cycle.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Jamf Pro">
+    <Steps>
+      <Step title="Add Proton VPN to your app catalog">
+        In Jamf Pro, navigate to **Devices → Mobile Device Apps** and add Proton VPN from the App Store (or via VPP).
+      </Step>
+      <Step title="Configure managed app settings">
+        Open the app record, go to the **App Configuration** tab, and add a configuration XML payload. Use the standard Android managed configuration XML format:
+
+        ```xml
+        <dict>
+          <key>token</key>
+          <string>YOUR_MDM_TOKEN</string>
+          <key>group</key>
+          <string>your-org-group</string>
+          <key>deviceId</key>
+          <string>$SERIALNUMBER</string>
+        </dict>
+        ```
+
+        You can use Jamf variables (e.g., `$SERIALNUMBER`) for `deviceId` to populate device-specific values automatically.
+      </Step>
+      <Step title="Scope and deploy">
+        Scope the app to the relevant device group and save. The configuration is delivered when the device checks in.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Security considerations
+
+<Note>
+  Managed configuration bundles are delivered and stored by the Android system. On devices enrolled in Android Enterprise with a Work Profile or fully managed mode, the bundle is only accessible to the device owner (the EMM agent) and to the target app. The data is not visible to other apps.
+
+  However, you should still follow these practices:
+
+  - Prefer token-based login over username/password. Tokens can be revoked centrally without changing account credentials.
+  - Rotate tokens periodically and after any suspected compromise.
+  - If you must use username/password, ensure your MDM platform encrypts the configuration in transit and at rest.
+  - Avoid logging the managed configuration bundle contents in MDM audit logs.
+</Note>

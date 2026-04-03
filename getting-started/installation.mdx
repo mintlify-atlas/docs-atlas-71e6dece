@@ -1,0 +1,130 @@
+---
+title: "Install Proton VPN"
+description: "Download and install Proton VPN for Android from Google Play, F-Droid, or GitHub Releases."
+keywords: ["install", "download", "apk", "android", "f-droid", "google play", "github"]
+---
+
+Proton VPN for Android is available from three sources. Choose the one that fits your needs.
+
+## Requirements
+
+Proton VPN requires **Android 8.0 (API level 26)** or later.
+
+## Download
+
+<Tabs>
+  <Tab title="Google Play">
+    The Google Play release is the recommended option for most users. It receives automatic updates and is signed with Proton's key.
+
+    <Steps>
+      <Step title="Open Google Play">
+        On your Android device, open the Google Play Store.
+      </Step>
+      <Step title="Search for Proton VPN">
+        Search for **Proton VPN** or navigate directly to the app listing.
+      </Step>
+      <Step title="Install">
+        Tap **Install** and wait for the download to complete.
+      </Step>
+      <Step title="Open the app">
+        Tap **Open** or find Proton VPN in your app drawer.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="F-Droid">
+    F-Droid distributes the open-source build of Proton VPN, built directly from source by the F-Droid project.
+
+    <Warning>
+      The F-Droid build is **not signed with Proton's key**. It is an independent open-source build maintained by the F-Droid project. See [APK signature verification](#apk-signature-verification) for details on verifying official Proton builds.
+    </Warning>
+
+    <Steps>
+      <Step title="Open F-Droid">
+        Make sure you have the F-Droid client installed on your device.
+      </Step>
+      <Step title="Search for Proton VPN">
+        Search for **Proton VPN** or browse to the package `ch.protonvpn.android`.
+      </Step>
+      <Step title="Install">
+        Tap **Install**. F-Droid will download and install the open-source build.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="GitHub Releases">
+    APKs are published directly to GitHub Releases for users who prefer manual installation or need a specific version.
+
+    <Steps>
+      <Step title="Visit the releases page">
+        Go to the [Proton VPN Android releases](https://github.com/ProtonVPN/android-app/releases) page on GitHub.
+      </Step>
+      <Step title="Download the APK">
+        Find the latest release and download the APK file for the `productionVanillaOpenSource` variant.
+      </Step>
+      <Step title="Allow installation from unknown sources">
+        On your device, go to **Settings > Apps > Special app access > Install unknown apps** and allow your browser or file manager to install APKs.
+      </Step>
+      <Step title="Install the APK">
+        Open the downloaded APK file and follow the on-screen prompts to install.
+      </Step>
+      <Step title="Verify the signature">
+        After installation, verify the APK signature to confirm it is an official Proton build. See [APK signature verification](#apk-signature-verification) below.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Build variants
+
+The source code uses three flavor dimensions — `environment`, `functionality`, and `distribution` — that combine to produce different build variants:
+
+| Dimension | Flavors | Purpose |
+|-----------|---------|---------|
+| `environment` | `production`, `black` | Target environment (production servers vs. internal test servers) |
+| `functionality` | `vanilla`, `google` | Whether Google Play Services dependencies are included |
+| `distribution` | `openSource` | Open-source distribution without proprietary components |
+
+The standard build for open-source and GitHub distribution is `productionVanillaOpenSource`. To build it locally:
+
+```bash
+./gradlew assembleProductionVanillaOpenSourceDebug
+```
+
+To build a signed release:
+
+```bash
+./gradlew assembleProductionVanillaOpenSourceRelease \
+  -PkeyStoreFilePath=<keystore> \
+  -PkeyStoreKeyAlias=<alias> \
+  -PkeyStorePassword=<pass> \
+  -PkeyStoreKeyPassword=<key-pass>
+```
+
+## APK signature verification
+
+All Proton VPN builds distributed through Google Play and GitHub Releases are signed with the same Proton key. You can verify the signing certificate using the SHA-256 fingerprint below.
+
+**Package:** `ch.protonvpn.android`
+
+**SHA-256 fingerprint:**
+
+```text
+DC:C9:43:9E:C1:A6:C6:A8:D0:20:3F:34:23:EE:42:BC:C8:B9:70:62:8E:53:CB:73:A0:39:3F:39:8D:D5:B8:53
+```
+
+To verify on your device using ADB:
+
+```bash
+adb shell pm get-app-info ch.protonvpn.android
+```
+
+Or using `apksigner` on a downloaded APK:
+
+```bash
+apksigner verify --print-certs your-protonvpn.apk
+```
+
+Compare the `SHA-256 digest` field in the output against the fingerprint above.
+
+<Note>
+  The F-Droid build is compiled and signed independently by the F-Droid project. Its signing certificate will not match the Proton fingerprint above — this is expected. If you switch from the F-Droid build to the Google Play or GitHub release, you will need to uninstall the existing app first.
+</Note>

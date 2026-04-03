@@ -1,0 +1,283 @@
+---
+title: "Data flow"
+description: "How data moves through the app: from a connect request to a live tunnel, and from the API to the server list UI."
+---
+
+## VPN connection flow
+
+When the user taps **Connect**, the following sequence runs synchronously through the layered architecture before the tunnel is active and the UI reflects the new state.
+
+<Steps>
+  <Step title="User triggers a ConnectIntent">
+    The UI creates an `AnyConnectIntent` value and passes it to `VpnConnectionManager.connect`. `ConnectIntent` is a sealed interface that captures the user's intent without yet resolving a specific server:
+
+    ```kotlin
+    // redesign/vpn/ConnectIntent.kt
+    sealed interface ConnectIntent : AnyConnectIntent {
+        data class FastestInCountry(
+            val country: CountryId,
+            override val features: Set<ServerFeature>,
+            override val settingsOverrides: SettingsOverrides? = null,
+        ) : ConnectIntent
+
+        data class SecureCore(
+            val exitCountry: CountryId,
+            val entryCountry: CountryId,
+        ) : ConnectIntent
+
+        data class Server(
+            val serverId: String,
+            val exitCountry: CountryId?,
+            override val features: Set<ServerFeature>,
+        ) : ConnectIntent
+
+        // … FastestInCity, FastestInState, Gateway
+    }
+    ```
+
+    The composable delegates through a `VpnConnect` function interface, which `VpnConnectionManager` implements.
+  </Step>
+  <Step title="VpnConnectionManager processes the intent">
+    `VpnConnectionManager` (`vpn/VpnConnectionManager.kt`) is the central coordinator. It holds the internal connection state machine:
+
+    ```kotlin
+    private sealed class InternalState {
+        object Disabled : InternalState()
+        data class ScanningPorts(…) : InternalState()
+        data class SwitchingConnection(…) : InternalState()
+        data class Active(val params: ConnectionParams, val activeBackend: VpnBackend) : InternalState()
+        data class Error(…) : InternalState()
+    }
+    ```
+
+    On receiving a connect request, the manager checks VPN permission, acquires a wake lock to prevent the CPU from sleeping during setup, and starts a connection coroutine.
+  </Step>
+  <Step title="Server selection">
+    `ServerManager2.getBestServerForConnectIntent` resolves the intent to a concrete `Server` object. It delegates to `ServerManager.getServerForProfile` which walks the in-memory server list applying filters for:
+
+    - User's subscription tier (free vs. paid servers)
+    - Excluded locations (split-tunneling exclusions from `ExcludedLocations`)
+    - Server load and maintenance status
+    - Required `ServerFeature` flags (Secure Core, P2P, streaming, etc.)
+
+    ```kotlin
+    // servers/ServerManager2.kt
+    suspend fun getBestServerForConnectIntent(
+        connectIntent: AnyConnectIntent,
+        vpnUser: VpnUser?,
+        protocol: ProtocolSelection,
+        excludedLocations: ExcludedLocations,
+    ): Server?
+    ```
+  </Step>
+  <Step title="Protocol negotiation and port scanning">
+    `ProtonVpnBackendProvider.prepareConnection` is called with the resolved server and the user's `ProtocolSelection`. For WireGuard it probes available ports on the server to find an open one:
+
+    ```kotlin
+    // ProtonVpnBackendProvider.kt
+    override suspend fun prepareConnection(
+        protocol: ProtocolSelection,
+        connectIntent: AnyConnectIntent,
+        server: Server,
+        alwaysScan: Boolean
+    ): PrepareResult? {
+        return when (protocol.vpn) {
+            VpnProtocol.WireGuard ->
+                wireGuard.prepareForConnection(connectIntent, server, setOf(protocol.transmission!!), scan)
+            VpnProtocol.ProTun ->
+                proTunBackend.prepareForConnection(connectIntent, server, transmissions, scan = false)
+            VpnProtocol.Smart ->
+                getSmartEnabledBackends(server, null).asFlow()
+                    .map { it.prepareForConnection(…) }
+                    .firstOrNull { it.isNotEmpty() }
+        }?.firstOrNull()
+    }
+    ```
+
+    The result is a `PrepareResult` holding the chosen `VpnBackend` and the fully-populated `ConnectionParams`.
+  </Step>
+  <Step title="Certificate acquisition">
+    Before opening the tunnel, each backend needs a valid client certificate. `CertificateRepository.getCertificate` returns the locally cached certificate if it has not expired; otherwise it fetches a fresh one from the API:
+
+    ```kotlin
+    // VpnBackend.kt — connectToLocalAgent()
+    val certInfo = certificateRepository.getCertificate(sessionId)
+    if (certInfo is CertificateRepository.CertificateResult.Success) {
+        agent = createAgentConnection(certInfo, hostname, createNativeClient(), features)
+    }
+    ```
+
+    The certificate contains the session's public key signed by Proton. It is passed to the local agent alongside the private key PEM so the agent can open an mTLS connection to the VPN server.
+  </Step>
+  <Step title="Backend starts the VPN tunnel">
+    `VpnBackend.connect(connectionParams)` is called on the selected backend.
+
+    **WireGuard path:**
+
+    ```kotlin
+    // WireguardBackend.kt
+    override suspend fun connect(connectionParams: ConnectionParams) {
+        super.connect(connectionParams)
+        val config = wireguardParams.getTunnelConfig(
+            context, settings, currentUser.sessionId(), certificateRepository, computeAllowedIPs
+        )
+        withContext(wireGuardIo) {
+            backend.setState(testTunnel, Tunnel.State.UP, config, transmissionStr, serverNameStrategy.value)
+        }
+        startMonitoringJob()
+    }
+    ```
+
+    **ProTun path:**
+
+    ```kotlin
+    // ProTunBackend.kt
+    override suspend fun connect(connectionParams: ConnectionParams) {
+        super.connect(connectionParams)
+        val config = protunParams.getTunnelConfig(context, settings, sessionId, certificateRepository, …)
+        sdk.connectionManager.connect(config)
+    }
+    ```
+  </Step>
+  <Step title="VPN service starts">
+    For WireGuard, the OS `VpnService` (`WireguardWrapperService`) is started as a foreground service when the `GoBackend` sets the tunnel to `UP`. The service holds the VPN interface file descriptor. `WireguardBackend` keeps a weak reference to it via `serviceCreated` / `serviceDestroyed` callbacks.
+
+    <Note>
+    Android requires a foreground service notification while the VPN tunnel is active. The notification is managed by the VPN service, not the backend.
+    </Note>
+  </Step>
+  <Step title="VpnStateMonitor emits state updates">
+    `VpnConnectionManager` observes each backend's `selfStateFlow` and forwards changes to `VpnStateMonitor`:
+
+    ```kotlin
+    // VpnConnectionManager.kt
+    private val monitorStatus: Flow<VpnStateMonitor.Status> =
+        internalState.filterNotNull().flatMapLatest { internalState ->
+            when (internalState) {
+                InternalState.Disabled ->
+                    flowOf(VpnStateMonitor.Status(VpnState.Disabled, null))
+                is InternalState.Active ->
+                    internalState.activeBackend.selfStateFlow.map { backendState ->
+                        VpnStateMonitor.Status(backendState, internalState.params)
+                    }
+                // …
+            }
+        }
+
+    // Forwarded to VpnStateMonitor on each emission:
+    monitorStatus.onEach { newStatus ->
+        vpnStateMonitor.updateStatus(newStatus)
+    }.launchIn(scope)
+    ```
+  </Step>
+  <Step title="UI observes state via StateFlow">
+    ViewModels collect `VpnStateMonitor.status` (or the UI-filtered `VpnStatusProviderUI.uiStatus`) and map it to composable-friendly UI state. Compose recomposes only the affected parts of the tree when the state changes.
+
+    ```kotlin
+    // VpnStateMonitor.kt
+    @Singleton
+    class VpnStateMonitor : VpnStatusProvider() {
+        private val statusInternal = MutableStateFlow(Status(Disabled, null))
+        override val status: StateFlow<Status> = statusInternal
+
+        val exitIp: StateFlow<IpPair?> = lastKnownExitIp
+        val vpnConnectionNotificationFlow = MutableSharedFlow<VpnFallbackResult>()
+    }
+    ```
+
+    `VpnStatusProviderUI` wraps the monitor and filters out internal `GuestHole` connections so they are never surfaced in the main UI.
+  </Step>
+</Steps>
+
+## Server list data flow
+
+The server list follows a separate path from API through storage to the UI.
+
+```
+Proton API  ──►  ServerListUpdater  ──►  ServersStore (disk)
+                                              │
+                                              ▼
+                                        ServerManager (in-memory)
+                                              │
+                                              ▼
+                                        ServerManager2 (suspending API)
+                                              │
+                            ┌─────────────────┼──────────────────┐
+                            ▼                 ▼                  ▼
+                    ServerListViewModel  VpnConnectionManager  SearchViewModel
+```
+
+1. **`ServerListUpdater`** periodically calls the Proton API and saves the raw server list via `ServersStore` to a file (`servers.store`) in the app's files directory.
+2. **`ServerManager`** loads the file on demand (`ensureLoaded`), parses it into `VpnCountry` / `Server` objects, and keeps them in memory. It exposes a `serverListVersion` `StateFlow` that increments on each reload.
+3. **`ServerManager2`** is a thin suspending wrapper that calls `serverManager.ensureLoaded()` before delegating. New code should use `ServerManager2` rather than `ServerManager` directly.
+4. **ViewModels** collect `serverListVersion`-derived flows (e.g., `allServersFlow`, `allServersByScoreFlow`) and map them to their own UI state.
+
+```kotlin
+// servers/ServerManager2.kt
+val allServersFlow = serverListVersion.map { serverManager.allServers }
+val allServersByScoreFlow = serverListVersion.map { serverManager.allServersByScore }
+```
+
+## Settings propagation
+
+User settings flow from storage to the active VPN backend through `SettingsForConnection`.
+
+```
+LocalUserSettings  ──►  SettingsForConnection  ──►  VpnBackend.getFeatures()
+(DataStore)                                              │
+                                                         ▼
+                                                  LocalAgent.setFeatures(features)
+```
+
+`SettingsForConnection` merges base settings with per-connection overrides (`SettingsOverrides`) from the active `ConnectIntent`. The backend listens for changes:
+
+```kotlin
+// VpnBackend.kt
+private fun initFeatures() {
+    settingsForConnection
+        .getFlowForCurrentConnection()
+        .onEach { settings ->
+            agent?.setFeatures(getFeatures(settings.connectionSettings))
+        }
+        .launchIn(mainScope)
+}
+
+private fun getFeatures(settings: LocalUserSettings) = Features().apply {
+    setInt(FEATURES_NETSHIELD, settings.netShield.ordinal.toLong())
+    setBool(FEATURES_RANDOMIZED_NAT, settings.randomizedNat)
+    setBool(FEATURES_SPLIT_TCP, settings.vpnAccelerator)
+    val bouncing = lastConnectionParams?.bouncing
+    if (bouncing != null) setString(FEATURES_BOUNCING, bouncing)
+}
+```
+
+Settings are pushed to the local agent immediately whenever they change, with no reconnection required. NetShield level changes, for example, take effect within seconds without interrupting the tunnel.
+
+<Tip>
+`SettingsOverrides` in a `ConnectIntent` let profiles override the global settings (e.g., a profile that always uses WireGuard UDP regardless of the global Smart protocol setting) without changing the user's default preferences.
+</Tip>
+
+## Error and fallback flow
+
+When a backend emits an error state, `VpnConnectionManager` decides whether to recover or surface the failure.
+
+```
+Backend emits VpnState.Error
+        │
+        ▼
+Is error recoverable?  (UNREACHABLE_INTERNAL, SERVER_ERROR, AUTH_FAILED_INTERNAL)
+        │
+   Yes──┴──No
+   │         └──► Show error notification, disconnect
+   ▼
+VpnConnectionErrorHandler.onUnreachableError / onServerError / onAuthError
+        │
+        ▼
+ProtonVpnBackendProvider.pingAll(candidateServers)
+        │
+   Found? ──Yes──► fallbackConnect(VpnFallbackResult.Switch)
+        │
+       No──────► VpnFallbackResult.Error → disconnect
+```
+
+Recoverable errors trigger `VpnConnectionErrorHandler`, which pings candidate servers and returns either a `Switch` result (connect to the new server) or an `Error` result. The manager then either initiates a seamless server switch or disconnects and notifies the user.

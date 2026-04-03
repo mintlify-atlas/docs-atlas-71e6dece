@@ -1,0 +1,87 @@
+---
+title: "Split tunneling"
+description: "Choose which apps or IP addresses bypass the VPN tunnel and use your regular connection."
+keywords: ["split tunneling", "exclude apps", "vpn bypass", "excluded locations", "include only"]
+---
+
+Split tunneling lets you decide which traffic goes through the VPN and which uses your normal internet connection directly. By default, all traffic on your device is routed through the VPN when you are connected. With split tunneling you can make exceptions — either by specifying apps that should bypass the VPN, or by specifying IP addresses and locations that should be excluded from the tunnel.
+
+## Modes
+
+Split tunneling supports two modes:
+
+**Standard (exclude only)** — All traffic goes through the VPN by default. Apps and IPs you add to the exclusion list bypass the VPN.
+
+**Inverse (include only)** — All traffic bypasses the VPN by default. Only the apps and IPs you add to the list are routed through the VPN tunnel.
+
+You can switch modes at any time. A confirmation dialog appears when you change modes to prevent accidental changes.
+
+## Configuration options
+
+When split tunneling is enabled, you can manage two types of exclusions:
+
+### Apps
+
+Add specific apps to route outside the VPN (standard mode) or through the VPN (inverse mode). For example:
+
+- Your banking app, if it blocks connections from VPN IP addresses
+- A local streaming service that only works on your home network
+- Smart home control apps that need to communicate with devices on your local network
+- A gaming app where routing through VPN increases latency
+
+### IPs and IP ranges
+
+Add specific IP addresses or CIDR ranges. For example:
+
+- Your home network's subnet (`192.168.1.0/24`) to keep access to local devices
+- A corporate server that requires connections from your actual IP address
+
+Location-based exclusions (countries, states, and cities) are also supported. You can exclude all traffic destined for servers in specific countries or regions from the tunnel.
+
+## How to configure split tunneling
+
+<Steps>
+  <Step title="Open Settings">
+    Tap the **Settings** icon in the bottom navigation bar.
+  </Step>
+  <Step title="Tap Split tunneling">
+    Find **Split tunneling** in the settings list and tap it to open the split tunneling screen.
+  </Step>
+  <Step title="Enable split tunneling">
+    Use the toggle at the top of the screen to turn split tunneling on.
+  </Step>
+  <Step title="Select a mode">
+    Tap **Mode** to choose between **Standard** (exclude selected) and **Inverse** (include selected only). Standard mode is the most common choice.
+  </Step>
+  <Step title="Add apps">
+    Tap **Excluded apps** (or **Included apps** in inverse mode) to select which apps bypass or use the VPN.
+  </Step>
+  <Step title="Add IPs or locations">
+    Tap **Excluded IPs** (or **Included IPs** in inverse mode) to enter specific IP addresses or ranges. You can also add country, state, or city-level location exclusions.
+  </Step>
+</Steps>
+
+## Use cases
+
+<AccordionGroup>
+  <Accordion title="Banking and financial apps">
+    Some banking apps block or flag connections from known VPN IP ranges. Adding your banking app to the split tunnel exclusion list lets it connect through your regular IP address, while all other traffic stays protected by the VPN.
+  </Accordion>
+  <Accordion title="Local network devices">
+    Printers, NAS drives, smart TVs, and other devices on your home network are not reachable through the VPN tunnel by default. Excluding your home subnet allows your device to communicate with local network resources while still routing general internet traffic through the VPN.
+  </Accordion>
+  <Accordion title="Geo-restricted local streaming">
+    Some regional streaming services only work from within a specific country or ISP. Excluding the streaming app lets it see your real location while other apps remain protected.
+  </Accordion>
+  <Accordion title="Low-latency gaming">
+    Online games are sensitive to latency. Excluding a game from the VPN lets it connect directly, while chat, browser, and other apps continue to use the encrypted tunnel.
+  </Accordion>
+</AccordionGroup>
+
+## Limitations
+
+<Note>
+  Split tunneling is not available in all configurations. If you have **Always-on VPN** with **Block connections without VPN** enabled in Android's system settings (the kill switch), excluded apps and IPs may still be blocked because Android's network block applies to all non-VPN traffic at the OS level, not just traffic that Proton VPN routes.
+</Note>
+
+Split tunneling applies to network traffic only. It does not change which apps have access to VPN-specific features like [NetShield](/features/netshield).

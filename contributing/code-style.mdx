@@ -1,0 +1,81 @@
+---
+title: "Code style"
+description: "Code style conventions for the Proton VPN Android app, covering Java, Kotlin, and static analysis tools."
+---
+
+The project enforces consistent code style through a shared scheme file for Java and ktlint for Kotlin. CI runs both checkstyle and detekt on every pull request.
+
+## Language policy
+
+The codebase is being migrated from Java to Kotlin. **New code should be written in Kotlin** wherever possible. Large refactors should conform to the preferred tech stack: Kotlin, MVVM, data-binding, and coroutines.
+
+## Java code style
+
+Java code follows the `ProtonStyle.xml` code scheme, located at the root of the repository. Import it into Android Studio to ensure your IDE formats code consistently with the rest of the project.
+
+<Steps>
+  <Step title="Open the Code Style settings">
+    In Android Studio, go to **File > Settings > Editor > Code Style** (on macOS: **Android Studio > Settings > Editor > Code Style**).
+  </Step>
+  <Step title="Import the scheme">
+    Click the gear icon next to the **Scheme** dropdown and select **Import Scheme**.
+  </Step>
+  <Step title="Select ProtonStyle.xml">
+    Navigate to the root of the `android-app` repository and select `ProtonStyle.xml`.
+  </Step>
+  <Step title="Apply the scheme">
+    Select the imported **Project** scheme from the dropdown and click **Apply**.
+  </Step>
+</Steps>
+
+The scheme configures:
+
+- Star imports are disabled (import threshold set to `Integer.MAX_VALUE`)
+- XML attribute ordering follows Android conventions (`xmlns:android` first, then other `xmlns:*` alphabetically, then `android:id`, `android:name`, and so on)
+- Kotlin right margin set to 120 characters
+- Continuation indent size of 4 for both XML and Kotlin
+
+## Kotlin code style
+
+Kotlin code uses **ktlint** with its default ruleset, based on the official Kotlin coding conventions. No custom ruleset is applied — the default ktlint rules are sufficient.
+
+Detekt is also configured to catch common issues. The detekt ruleset is downloaded from the shared Proton Core configuration at build time.
+
+## Running static analysis
+
+Run these commands locally before opening a pull request to catch issues early.
+
+<CodeGroup>
+
+```bash Checkstyle (Java)
+./gradlew checkstyle
+```
+
+```bash Detekt (Kotlin)
+./gradlew detekt
+```
+
+```bash Both
+./gradlew checkstyle detekt
+```
+
+</CodeGroup>
+
+<Tip>
+The detekt configuration is fetched from the ProtonCore repository on first run and cached for 24 hours. If the download fails (for example, in an offline environment), the task will throw an error. You can work around this by committing a local copy of the config to `config/detekt/config.yml`.
+</Tip>
+
+## Tech stack conventions
+
+New features and significant refactors should follow these architectural conventions:
+
+| Area | Preferred approach |
+|------|--------------------|
+| Architecture | MVVM |
+| UI data flow | Data-binding or Jetpack Compose |
+| Async work | Kotlin coroutines |
+| Dependency injection | Hilt |
+| Database | Room |
+| Navigation | Jetpack Navigation |
+
+Avoid introducing new Java classes. If you are modifying an existing Java file, consider converting it to Kotlin as part of your change.

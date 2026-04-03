@@ -1,0 +1,107 @@
+---
+title: "Submit a bug report"
+description: "How to report a problem from within the Proton VPN app, what information is included, and how to file a code bug on GitHub."
+---
+
+The built-in bug report tool is the fastest way to get help. It sends your description, device information, and optional app logs directly to the Proton support team.
+
+## Submit a report from the app
+
+<Steps>
+  <Step title="Open the bug report screen">
+    In the app, go to **Settings > Report a problem**.
+
+    The screen opens a three-step wizard: category selection, suggestions, then the report form.
+  </Step>
+
+  <Step title="Select a category">
+    Choose the category that best describes your problem:
+
+    - **Browsing speed** — VPN is slower than expected
+    - **Connecting to VPN** — the app cannot establish a tunnel
+    - **Weak or unstable connection** — the connection drops or is unreliable
+    - **Using the app** — crashes, UI issues, or unexpected behaviour
+    - **Streaming** — cannot access a streaming service
+    - **Something else** — any problem not covered above
+
+    The category you select determines which follow-up questions appear in the form.
+  </Step>
+
+  <Step title="Review the suggestions">
+    Before filling out the form, the app shows a list of quick fixes relevant to your category. For example, for a speed problem you will see suggestions to try a different server or switch protocol.
+
+    Work through the suggestions. If none of them resolve the issue, tap **Contact us**.
+  </Step>
+
+  <Step title="Fill in the report form">
+    Complete the fields presented for your category. Required fields are marked. Typical fields include:
+
+    - **Network type** — home Wi-Fi, mobile, public Wi-Fi, etc.
+    - **What went wrong** — a free-text description of the problem
+    - **Steps already taken** — what you have already tried
+    - **Error messages** — copy the exact wording of any error the app displayed
+
+    Enter your **email address** so the support team can follow up. The app pre-fills this from your Proton account if one is set.
+
+    Toggle **Send logs** on or off (it is on by default). See [What is included in the report](#what-is-included-in-the-report) below.
+
+    Tap **Send report** when you are ready.
+  </Step>
+</Steps>
+
+## What is included in the report
+
+The report is assembled by `PrepareAndPostBugReport` and submitted to the Proton API. It contains:
+
+| Field | Description |
+|-------|-------------|
+| Client | `Android app` or `Android TV app` |
+| Client version | App version name from the build |
+| Username | Your Proton account username |
+| Email | Address you provided in the form |
+| OS | `Android` |
+| OS version | Android release version (e.g. `14`) |
+| Plan | Your current Proton VPN plan tier |
+| ISP | Your internet service provider name, detected automatically |
+| Country | Your current country, based on the last server list update |
+| Description | The category label, your form answers, and a Sentry installation ID |
+| Logs (optional) | Rolling log files from `ProtonLogger` (see below) |
+
+### App logs
+
+When **Send logs** is enabled, the app attaches the log files produced by `ProtonLogger`. These logs capture:
+
+- VPN connection events (connect, disconnect, protocol negotiation, server switches)
+- Error codes and fallback decisions (e.g. `ErrorType.UNREACHABLE`, server maintenance fallback)
+- Protocol scanning results from `ServerAvailabilityCheck`
+- Power and network state changes
+
+Logs are written to rolling files on device storage. Temporary copies are created for upload and deleted immediately after the report is sent.
+
+<Note>
+  Logs do not contain the content of your internet traffic. They record connection metadata — which servers were tried, which protocols were used, and what errors occurred.
+</Note>
+
+## Privacy note
+
+The logs attached to a bug report contain connection metadata but no browsing content. Proton VPN operates under a strict no-logs policy for VPN traffic. Bug report data is used only to investigate and resolve the issue you reported and is handled under Proton's [Privacy Policy](https://proton.me/legal/privacy).
+
+You can disable log attachment by toggling off **Send logs** in the report form. The support team will still receive your description and device information, but may have less information to diagnose the problem.
+
+## Report a code bug on GitHub
+
+If you have identified a reproducible bug in the app's source code, or want to track a known issue, open an issue on the public repository:
+
+[https://github.com/ProtonVPN/android-app/issues](https://github.com/ProtonVPN/android-app/issues)
+
+Before opening a new issue, search existing issues to avoid duplicates. Include:
+
+- Android version and device model
+- App version (visible in **Settings > About**)
+- Steps to reproduce
+- Expected behaviour vs. actual behaviour
+- Any relevant log output or error messages
+
+<Warning>
+  Do not include your Proton account password, private keys, or other credentials in a GitHub issue. GitHub issues are public.
+</Warning>

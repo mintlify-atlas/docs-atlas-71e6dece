@@ -1,23 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Proton VPN for Android",
+  "projectType": "saas",
+  "projectName": "Proton VPN for Android",
+  "projectDescription": "The official open-source ProtonVPN Android app providing secure, private VPN connections using WireGuard, IKEv2/IPSec, and Smart protocol with features like NetShield, SecureCore, split tunneling, and Android TV support.",
   "theme": "almond",
-  "colors": {
-    "primary": "#3999e2",
-    "light": "#8779fa"
-  },
-  "favicon": "https://media.brand.dev/fc3c3735-da09-43fd-b9c7-8d536abb483c.png",
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/ProtonVPN/android-app"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/ProtonVPN/android-app"
-    }
-  },
+  "primaryColor": "#3999e2",
+  "lightColor": "#8779fa",
+  "darkColor": null,
   "navigation": {
     "tabs": [
       {
@@ -99,5 +87,33 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "WireGuard, OpenVPN/IKEv2 (StrongSwan), and Smart protocol auto-selection",
+    "NetShield DNS-based ad, tracker, and malware blocking",
+    "SecureCore double-hop routing through Proton-owned servers",
+    "Split tunneling with per-app and per-location exclusions",
+    "Kill Switch to block internet if VPN drops",
+    "Custom DNS configuration with DNS leak protection",
+    "P2P and Tor server support",
+    "Connection profiles for saving custom configurations",
+    "Android TV and Amazon Fire TV support",
+    "Quick Settings tile and home screen widget",
+    "Enterprise managed deployment with auto-login",
+    "Guest Hole for unauthenticated access to Proton services",
+    "IPv6 support",
+    "Telemetry and observability"
+  ],
+  "publicApiSurface": [
+    "VpnConnectionManager - connect/disconnect/reconnect lifecycle",
+    "VpnStateMonitor - observable VPN connection state",
+    "ConnectIntent - FastestInCountry, FastestInCity, SecureCore, Gateway, Server",
+    "VpnProtocol - WireGuard, ProTun, Smart",
+    "ServerFeature - P2P, Tor",
+    "NetShieldProtocol - blocking levels",
+    "ProtonVPNRetrofit API endpoints - /vpn/v2/logicals, /vpn/v2, /vpn/v1/certificate, /data/v1/stats",
+    "ManagedConfig / AutoLoginConfig - enterprise MDM configuration",
+    "CertificateRepository - VPN certificate management",
+    "SettingsForConnection - per-connection settings overrides"
+  ]
 }

@@ -1,0 +1,270 @@
+---
+title: "VPN backends"
+description: "How WireGuard, ProTun, and the backend provider work together to establish VPN connections."
+---
+
+The VPN layer is built around an abstract `VpnBackend` class that each protocol implementation extends. A provider selects and prepares the right backend based on the user's protocol preference.
+
+## The `VpnBackend` abstract class
+
+`VpnBackend` (`vpn/VpnBackend.kt`) is the common contract for all protocol implementations. It:
+
+- Manages a local agent connection (certificate-based mTLS channel to the VPN server)
+- Tracks the tunnel's `VpnState` via a `MutableStateFlow`
+- Handles certificate refresh and key rotation
+- Surfaces NetShield statistics and exit IP information
+
+```kotlin
+// VpnBackend.kt — core lifecycle methods
+abstract class VpnBackend(
+    val settingsForConnection: SettingsForConnection,
+    val certificateRepository: CertificateRepository,
+    val networkManager: NetworkManager,
+    val vpnProtocol: VpnProtocol,
+    val mainScope: CoroutineScope,
+    // …
+) : VpnStateSource {
+
+    // Subclasses implement port scanning / reachability checks
+    abstract suspend fun prepareForConnection(
+        connectIntent: AnyConnectIntent,
+        server: Server,
+        transmissionProtocols: Set<TransmissionProtocol>,
+        scan: Boolean,
+        numberOfPorts: Int = Int.MAX_VALUE,
+        waitForAll: Boolean = false
+    ): List<PrepareResult>
+
+    // Called by VpnConnectionManager when the connection is established
+    @CallSuper
+    open suspend fun connect(connectionParams: ConnectionParams) {
+        closeAgentConnection()
+        lastConnectionParams = connectionParams
+    }
+
+    // Tear down the underlying tunnel
+    protected abstract suspend fun closeVpnTunnel(withStateChange: Boolean = true)
+
+    // Reconnect using the last known connection params
+    open suspend fun reconnect() { … }
+}
+```
+
+### Local agent
+
+Every connected backend opens a local agent channel — a TLS connection to the VPN server's local agent endpoint. The agent:
+
+- Authenticates the session with the client certificate
+- Sends feature flags (NetShield level, randomised NAT, VPN Accelerator)
+- Delivers NetShield statistics and `connectionDetails` (exit IP)
+- Reports certificate errors and policy violations
+
+The inner `VpnAgentClient` class implements the `NativeClient` interface from the `gopenpgp/localAgent` Go library and translates callbacks into `VpnState` updates on the main coroutine scope.
+
+### VPN state
+
+Protocol state is tracked in two places:
+
+| Field | Description |
+|---|---|
+| `internalVpnProtocolState` | Raw state from the OS-level tunnel (WireGuard tunnel up/down, SDK state) |
+| `selfStateFlow` | Combined state that takes the local agent into account (certificate errors, NetShield jailing) |
+
+`VpnConnectionManager` observes `selfStateFlow` and forwards it to `VpnStateMonitor`.
+
+## Protocol implementations
+
+<Tabs>
+  <Tab title="WireGuard">
+    `WireguardBackend` (`vpn/wireguard/WireguardBackend.kt`) wraps the **WireGuard Android** library (`com.wireguard.android.backend.GoBackend`).
+
+    **Supported transmission protocols:** UDP (default), TCP, TLS
+
+    ```kotlin
+    @Singleton
+    class WireguardBackend @Inject constructor(
+        @ApplicationContext val context: Context,
+        networkManager: NetworkManager,
+        settingsForConnection: SettingsForConnection,
+        certificateRepository: CertificateRepository,
+        // …
+    ) : VpnBackend(
+        settingsForConnection, certificateRepository, networkManager,
+        networkCapabilitiesFlow, VpnProtocol.WireGuard, …
+    )
+    ```
+
+    **Connection flow:**
+
+    1. `prepareForConnection` scans available ports on the server.
+    2. `connect` builds a WireGuard tunnel config from `ConnectionParamsWireguard` (including the X25519 key from `CertificateRepository`) and calls `backend.setState(Tunnel.State.UP, config, transmissionStr, serverNameStrategy)`.
+    3. A monitoring coroutine (`startMonitoringJob`) polls `backend.state` in a loop and maps the raw integer state to `VpnState`:
+
+    ```kotlin
+    val newState = when (val state = backend.state) {
+        WG_STATE_DISABLED    -> VpnState.Disabled
+        WG_STATE_CONNECTING  -> VpnState.Connecting
+        WG_STATE_CONNECTED   -> VpnState.Connected
+        WG_STATE_ERROR       -> VpnState.Error(ErrorType.UNREACHABLE_INTERNAL, isFinal = false)
+        WG_STATE_WAITING_FOR_NETWORK -> VpnState.WaitingForNetwork
+        WG_STATE_CLOSED      -> VpnState.Disabled
+        else -> VpnState.Error(ErrorType.GENERIC_ERROR, isFinal = true)
+    }
+    ```
+
+    **Android VPN service:** `WireguardWrapperService` is the `VpnService` subclass for WireGuard. References to the service are held weakly by the backend via `serviceCreated` / `serviceDestroyed` callbacks.
+
+    <Note>
+    On Android 10+, the backend waits for the tunnel's `NET_CAPABILITY_VALIDATED` network capability before opening the local agent connection. This prevents TLS failures on newer OS versions.
+    </Note>
+  </Tab>
+  <Tab title="ProTun">
+    `ProTunBackend` (`vpn/protun/ProTunBackend.kt`) is a wrapper around the **Proton VPN SDK** (`me.proton.vpn.sdk`). It replaces the legacy StrongSwan/IKEv2 backend.
+
+    ```kotlin
+    @Singleton
+    class ProTunBackend @Inject constructor(
+        @ApplicationContext val context: Context,
+        private val sdk: ProtonVpnSdk,
+        // …
+    ) : VpnBackend(
+        settingsForConnection, certificateRepository, networkManager,
+        networkCapabilitiesFlow, VpnProtocol.ProTun, …,
+        shouldWaitForTunnelVerified = false
+    )
+    ```
+
+    The SDK exposes a `connectionManager.state` flow. `ProTunBackend` collects it and maps SDK states to `VpnState`:
+
+    ```kotlin
+    sdk.connectionManager.state.onEach { state ->
+        vpnProtocolState = when (state) {
+            is VpnConnectionState.Disconnected -> state.error?.let {
+                VpnState.Error(ErrorType.GENERIC_ERROR, "", isFinal = true)
+            } ?: VpnState.Disabled
+            is VpnConnectionState.Connecting -> VpnState.Connecting
+            is VpnConnectionState.Connected  -> VpnState.Connected
+            is VpnConnectionState.WaitingForAction -> when (state.reason) {
+                VpnWaitReason.WaitingForNetwork -> VpnState.WaitingForNetwork
+            }
+            VpnConnectionState.Loading -> VpnState.Disabled
+        }
+    }.launchIn(mainScope)
+    ```
+
+    **Connection flow:**
+
+    1. `prepareForConnection` calls `PreparePeersForConnectionProTun` which resolves server peers without port-scanning.
+    2. `connect` builds a tunnel config and calls `sdk.connectionManager.connect(config)`.
+    3. Disconnection calls `sdk.connectionManager.disconnect()`.
+
+    <Info>
+    The ProTun backend skips the tunnel-verified wait (`shouldWaitForTunnelVerified = false`) because the SDK manages its own readiness signalling.
+    </Info>
+  </Tab>
+</Tabs>
+
+## `ProtonVpnBackendProvider`
+
+`ProtonVpnBackendProvider` (`vpn/ProtonVpnBackendProvider.kt`) implements `VpnBackendProvider` and decides which backend to use for a given connection request.
+
+```kotlin
+class ProtonVpnBackendProvider(
+    val config: AppConfig,
+    val wireGuard: VpnBackend,
+    val proTunBackend: VpnBackend,
+) : VpnBackendProvider
+```
+
+It is constructed in `AppModule.kt`:
+
+```kotlin
+@Singleton
+@Provides
+fun provideVpnBackendManager(
+    appConfig: AppConfig,
+    wireguardBackend: WireguardBackend,
+    proTunBackend: ProTunBackend,
+): VpnBackendProvider =
+    ProtonVpnBackendProvider(appConfig, wireguardBackend, proTunBackend)
+```
+
+### Protocol selection logic
+
+`prepareConnection` maps a `ProtocolSelection` to the right backend:
+
+| Protocol | Backend | Port scan? |
+|---|---|---|
+| `WireGuard` | `WireguardBackend` | Yes (configurable) |
+| `ProTun` | `ProTunBackend` | No |
+| `Smart` | Both (in order) | Yes |
+
+**Smart protocol** tries backends in order of preference and returns the first one that responds:
+
+```kotlin
+VpnProtocol.Smart -> {
+    getSmartEnabledBackends(server, null).asFlow().map {
+        val transmissionProtocols = getSmartTransmissionProtocols(it.vpnProtocol, null)
+        it.prepareForConnection(connectIntent, server, transmissionProtocols, scan)
+    }.firstOrNull { it.isNotEmpty() }
+}
+```
+
+`getSmartEnabledBackends` checks `AppConfig.getSmartProtocolConfig()` to determine which protocols are enabled (WireGuard UDP/TCP/TLS, ProTun). Feature flag `wireguardTlsEnabled` gates TCP and TLS transmission modes.
+
+### Fallback pinging (`pingAll`)
+
+When `VpnConnectionErrorHandler` needs to find an alternative server after a failure, it calls `pingAll`. This method concurrently probes a list of candidate servers across all smart-enabled backends and returns the first server that responds:
+
+```kotlin
+override suspend fun pingAll(
+    orgIntent: AnyConnectIntent,
+    orgProtocol: ProtocolSelection,
+    preferenceList: List<PhysicalServer>,
+    fullScanServer: PhysicalServer?
+): VpnBackendProvider.PingResult?
+```
+
+Each server is probed with up to `PING_ALL_MAX_PORTS = 3` ports unless it is designated as the `fullScanServer`, in which case all ports are scanned.
+
+## Certificate management
+
+`CertificateRepository` (`vpn/CertificateRepository.kt`) manages the Ed25519 keypair and the short-lived VPN certificate issued by the Proton API.
+
+### Key lifecycle
+
+1. **Generate** — `CertificateKeyProvider.generateCertInfo()` creates a new Ed25519 keypair using the `gopenpgp` Go library. The result is stored in `CertificateStorage` (encrypted with Android Keystore via `CertStorageCrypto`).
+2. **Fetch** — `updateCertificateFromBackend` calls `api.getCertificate(sessionId, publicKeyPem)` and stores the returned PEM certificate alongside the keys.
+3. **Refresh** — Certificates are refreshed proactively via `PeriodicUpdateManager`. The next refresh time is derived from the API response (`refreshAt`) or set to halfway between now and expiry on error.
+4. **Revoke** — If the local agent reports `errorCodeBadCertSignature` or `errorCodeCertificateRevoked`, the backend calls `revokeCertificateAndReconnect`, which generates a new keypair and forces an immediate certificate fetch before reconnecting.
+
+```kotlin
+sealed class CertificateResult {
+    data class Error(val error: ApiResult.Error?) : CertificateResult()
+    data class Success(val certificate: String, val privateKeyPem: String) : CertificateResult()
+}
+```
+
+The `currentCertUpdateFlow` shared flow notifies active backends when a new certificate is available, triggering an agent reconnection without tearing down the VPN tunnel.
+
+<Warning>
+Certificate keys are session-scoped. If a user has multiple active sessions, each session maintains its own keypair and certificate stored under its `SessionId`.
+</Warning>
+
+## Error types
+
+`ErrorType` (defined in `VpnState.kt`) enumerates all terminal and recoverable errors that backends can emit:
+
+| Error type | Meaning |
+|---|---|
+| `AUTH_FAILED` | Authentication rejected by the server |
+| `PEER_AUTH_FAILED` | Server certificate verification failure |
+| `UNREACHABLE` | Server is unreachable (final — shown to user) |
+| `UNREACHABLE_INTERNAL` | Server unreachable (recoverable — triggers fallback) |
+| `MAX_SESSIONS` | User has hit the concurrent session limit |
+| `LOCAL_AGENT_ERROR` | Generic local agent protocol error |
+| `KEY_USED_MULTIPLE_TIMES` | Private key reuse detected |
+| `TORRENT_NOT_ALLOWED` | Policy violation: torrent blocked on this server |
+| `POLICY_VIOLATION_LOW_PLAN` | Server requires a higher subscription tier |
+
+Recoverable errors trigger `VpnConnectionErrorHandler`, which attempts to find an alternative server via `pingAll` before surfacing a failure to the user.

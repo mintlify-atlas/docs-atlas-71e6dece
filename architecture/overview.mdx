@@ -1,0 +1,157 @@
+---
+title: "Architecture overview"
+description: "How the ProtonVPN Android app is structured, from UI layer to data sources."
+---
+
+The ProtonVPN Android app follows a layered **MVVM** architecture enforced with Hilt dependency injection. Each layer has a single responsibility and communicates with adjacent layers through well-defined interfaces and reactive streams.
+
+## Architectural layers
+
+```
+┌─────────────────────────────────────────────┐
+│              UI (Jetpack Compose)            │
+│        Screens, composables, dialogs         │
+├─────────────────────────────────────────────┤
+│                  ViewModels                  │
+│     State holders, UI logic, user events     │
+├─────────────────────────────────────────────┤
+│                  Use cases                   │
+│     Single-purpose business logic units      │
+├─────────────────────────────────────────────┤
+│                 Repositories                 │
+│    Coordinate data sources, own the truth    │
+├─────────────────────────────────────────────┤
+│               Data sources                   │
+│   Room database · API · Prefs · VPN service  │
+└─────────────────────────────────────────────┘
+```
+
+<CardGroup cols={2}>
+  <Card title="UI layer" icon="palette">
+    Built with Jetpack Compose. Screens observe `StateFlow` and `Flow` from ViewModels. No business logic lives here.
+  </Card>
+  <Card title="ViewModels" icon="layout-dashboard">
+    Android `ViewModel` subclasses scoped to navigation destinations. Transform domain state into UI state and delegate user actions to use cases.
+  </Card>
+  <Card title="Use cases" icon="function-square">
+    Focused, single-responsibility classes. Examples: `GetSmartProtocols`, `SettingsForConnection`, `ObserveExcludedLocations`. Injected directly into ViewModels and managers.
+  </Card>
+  <Card title="Repositories" icon="database">
+    Own the authoritative copy of a domain model (servers, certificates, recents). Merge API responses with locally persisted data.
+  </Card>
+  <Card title="Data sources" icon="server">
+    Room database (`AppDatabase`), Retrofit API client (`ProtonApiRetroFit`), `SharedPreferences`, and the live VPN service state emitted by `VpnBackend`.
+  </Card>
+  <Card title="Proton Core" icon="package">
+    The `me.proton.core.*` libraries provide account management, authentication, networking, feature flags, telemetry, and more. The app binds Core interfaces in `di/AppDatabaseModule.kt`.
+  </Card>
+</CardGroup>
+
+## Async model: coroutines and Flow
+
+All asynchronous work uses Kotlin coroutines. A single `CoroutineScope` (a `MainScope`) is provided by Hilt and injected wherever long-lived work is launched:
+
+```kotlin
+// di/AppModule.kt
+@Provides
+@Singleton
+fun provideMainScope(): CoroutineScope = MainScope()
+```
+
+State is propagated as `StateFlow` or `Flow`. ViewModels collect these flows and expose them as `StateFlow<UiState>` to composables. The VPN state machine itself is built on `MutableStateFlow`:
+
+```kotlin
+// VpnStateMonitor.kt
+private val statusInternal = MutableStateFlow(Status(Disabled, null))
+override val status: StateFlow<Status> = statusInternal
+```
+
+<Tip>
+Prefer `stateIn(scope, SharingStarted.Eagerly, initial)` when you need to convert a cold `Flow` into a hot `StateFlow` for the UI layer.
+</Tip>
+
+## Dependency injection with Hilt
+
+The app uses **Hilt** (`dagger.hilt.*`) throughout. All Hilt modules are installed into `SingletonComponent` and live in `app/src/main/java/com/protonvpn/android/di/`:
+
+| Module | Responsibility |
+|---|---|
+| `AppModule.kt` | Core singletons: API client, VPN backend provider, coroutine scope, dispatcher provider |
+| `AppDatabaseModule.kt` | Room database construction and DAO provision |
+| `AuthModule.kt` | Authentication-related bindings |
+| `CoreNetworkModule.kt` | OkHttp, certificate pins, DoH URLs |
+| `CoreAccountManagerModule.kt` | Proton Core account manager |
+| `SdkModule.kt` | ProTun VPN SDK binding |
+
+`@Singleton` is used for stateful services (`VpnConnectionManager`, `VpnStateMonitor`, `CertificateRepository`, `ServerManager2`). Use cases are typically `@Reusable` or unscoped.
+
+```kotlin
+// AppModule.kt — binding VpnConnectionManager as the VpnConnect interface
+@Singleton
+@Binds
+fun bindVpnConnect(impl: VpnConnectionManager): VpnConnect
+```
+
+## Room database
+
+A single `AppDatabase` (version 54 as of this writing) consolidates all entities. It extends both VPN-specific database interfaces and Proton Core database interfaces:
+
+```kotlin
+// db/AppDatabase.kt
+@Database(entities = [ /* 30+ entity classes */ ], version = AppDatabase.VERSION)
+abstract class AppDatabase :
+    BaseDatabase(),
+    AccountDatabase,
+    VpnRecentsDatabase,
+    VpnProfilesDatabase,
+    VpnUserDatabase,
+    FeatureFlagDatabase,
+    // … other Core databases
+```
+
+VPN-specific entities include:
+
+- `RecentConnectionEntity` / `UnnamedRecentIntentEntity` — recent connections
+- `ProfileEntity` — user-created connection profiles
+- `ExcludedLocationEntity` — split-tunneling excluded locations
+- `VpnUser` — cached VPN user data
+- `PeriodicCallInfo` — periodic update scheduling state
+
+DAOs are provided through `AppDatabaseDaoModule` and injected into repositories.
+
+## Module organisation
+
+```
+app/src/main/java/com/protonvpn/android/
+├── api/             # Retrofit API definitions and GuestHole
+├── appconfig/       # AppConfig, feature flags, periodic updates
+├── auth/            # Authentication use cases and data
+├── db/              # AppDatabase, migrations
+├── di/              # All Hilt modules
+├── models/          # Domain models (VpnCountry, Server, ConnectionParams…)
+├── profiles/        # Connection profiles
+├── redesign/        # Rewritten UI: countries, recents, settings, VPN screens
+├── servers/         # ServerManager2, ServersStore, streaming services
+├── settings/        # User settings data layer
+├── telemetry/       # VPN connection telemetry
+├── ui/              # Legacy UI (home, onboarding, settings screens)
+├── vpn/             # Core VPN logic: backends, state, certificates, error handling
+│   ├── protun/      # ProTun backend (Proton VPN SDK)
+│   └── wireguard/   # WireGuard backend (WireGuard Android library)
+└── ProtonApplication.kt
+```
+
+## Proton Core integration
+
+The app links against several `me.proton.core.*` artifacts:
+
+- **`core-account`** — account entity, session management
+- **`core-auth`** — sign-in, SSO
+- **`core-network`** — OkHttp setup, DoH, API error handling
+- **`core-feature-flag`** — Unleash feature flags (fetched and cached in Room)
+- **`core-telemetry`** — event batching and upload
+- **`core-user` / `core-usersettings`** — user and settings entities
+- **`core-notification`** / **`core-push`** — notification infrastructure
+- **`core-observability`** — metric event funneling
+
+Core database interfaces are bound to `AppDatabase` in `AppDatabaseBindsModule`, so Core repositories obtain their DAOs without knowing about the concrete database class.

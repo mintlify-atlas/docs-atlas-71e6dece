@@ -1,0 +1,84 @@
+---
+title: "Choosing a server"
+description: "How to connect to the fastest server, browse by country or city, filter by feature, and reconnect quickly."
+---
+
+Proton VPN for Android lets you connect with a single tap using automatic server selection, or browse the full server list to connect to a specific country, city, state, or individual server.
+
+## Connecting to the fastest server
+
+Tap **Connect** on the home screen to connect to the fastest available server. The app selects the server with the best combination of load and proximity for your location.
+
+This is equivalent to `ConnectIntent.Fastest` in the app's connection logic — it picks the best server globally regardless of country.
+
+## Browsing by location
+
+Open the **Countries** list to browse all available locations. You can connect at three levels of specificity:
+
+- **Country** — connects to the fastest server in that country
+- **City** — connects to the fastest server in a specific city within the country
+- **State** (US only) — connects to the fastest server in a specific US state
+
+Tap any entry to connect. Long-press or tap the chevron to expand a country and view its cities or states.
+
+<Info>
+  City and state-level selection is only available on paid plans. Free users connect to entire countries.
+</Info>
+
+## Server features
+
+Some servers are optimised for specific use cases. You can filter or browse by feature in the server list.
+
+<CardGroup cols={2}>
+  <Card title="P2P / Torrenting" icon="arrow-right-arrow-left">
+    Servers flagged for P2P are configured to allow torrent and peer-to-peer traffic. Connecting to a P2P server ensures your torrent client routes through VPN without restrictions.
+  </Card>
+  <Card title="Tor" icon="circle-nodes">
+    Tor servers route your traffic through the Tor anonymity network after it exits the VPN. This adds an extra layer of anonymity at the cost of higher latency.
+  </Card>
+  <Card title="Streaming" icon="play">
+    Streaming-optimised servers are tuned for accessing geo-restricted content on streaming platforms. The app may surface these automatically for supported services.
+  </Card>
+  <Card title="SecureCore" icon="lock">
+    SecureCore servers route traffic through an additional Proton-owned server in a privacy-friendly country before the exit node. See [SecureCore](/connections/secure-core).
+  </Card>
+</CardGroup>
+
+## Server load and performance
+
+Each server in the list shows a **load indicator** — the percentage of its capacity currently in use. Lower load generally means better performance.
+
+- **Low load (0–50%)** — good performance expected
+- **Medium load (50–75%)** — acceptable performance
+- **High load (75%+)** — consider choosing a different server or city
+
+The app's automatic selection (`ConnectIntent.Fastest`) factors in both load and latency when picking a server, so you do not need to manually monitor load for everyday use.
+
+## Free vs paid server access
+
+Server availability depends on your Proton VPN plan:
+
+| Access | Free plan | Paid plan |
+|---|---|---|
+| Server countries | Limited selection | All countries |
+| City-level selection | Not available | Available |
+| P2P servers | Not available | Available |
+| Tor servers | Not available | Available |
+| SecureCore | Not available | Available |
+| Streaming servers | Limited | Full access |
+
+Free servers are marked in the server list. Tapping a paid server while on a free plan prompts you to upgrade.
+
+## Recent connections
+
+The home screen shows your recent connections for quick reconnect. Tap any recent entry to reconnect with the same server and settings used previously.
+
+Recent connections are saved automatically and include:
+
+- The server or country you connected to
+- Any features that were active (P2P, Tor)
+- The protocol and settings overrides in effect at the time
+
+<Tip>
+  Save frequently used connections as profiles to pin them to the home screen and assign a custom name and icon. See [Connection profiles](/connections/connection-profiles).
+</Tip>

@@ -1,0 +1,129 @@
+---
+title: "Testing"
+description: "How to run unit tests, instrumented tests, UI automator tests, and screenshot tests for the Proton VPN Android app."
+---
+
+The project has several layers of testing: JVM unit tests, Android instrumented tests, UI automator tests, and Compose screenshot tests. CI runs unit and instrumented tests on every pull request.
+
+## Unit tests
+
+Unit tests run on the JVM and do not require a device or emulator. They live in `app/src/test/`.
+
+```bash
+./gradlew test
+```
+
+Unit tests cover areas like connection parameter handling, server manager logic, user plan management, API behaviour, and more. They use JUnit 4, MockK, Turbine (for Flow testing), and Robolectric where Android framework dependencies are needed.
+
+## Instrumented tests
+
+Instrumented tests run on a physical device or emulator and have access to the full Android framework. They live in `app/src/androidTest/`.
+
+```bash
+./gradlew androidTest
+```
+
+The test runner is `com.protonvpn.TestsRunner`. App data is cleared between tests (`clearPackageData: 'true'`), and the AndroidX Test Orchestrator is used for isolation.
+
+### Test types
+
+Tests in `app/src/androidTest/java/` are organized by type using a postfix convention:
+
+| Postfix | Description |
+|---------|-------------|
+| `Compose` | Mocked Compose component UI tests — useful for checking different UI states without full E2E flows |
+| `Core` | Shared component tests provided by Proton Core |
+| `Black` | Tests run against a test environment using a real backend |
+| `Prod` | Real backend tests run against the production API |
+| `Integration` | Integration tests involving two isolated components that require device-specific dependencies (e.g., VPN native libraries) |
+
+### Folder structure
+
+The `app/src/androidTest/` directory is organized as follows:
+
+- **Data** — test constants such as timeouts
+- **Di** — dependency injection overrides to mock app functionality
+- **Interfaces** — shared UI test interfaces for consistent structure across test classes
+- **Matchers** — custom Espresso matchers not covered by the Fusion library
+- **Robots** — UI action and selector definitions following the Robot pattern (each Robot is an object holding elements, actions, and verifications for a UI component)
+- **TestRules** — setup and cleanup rules (`@Before` / `@After` logic)
+- **Tests** — all test implementations
+- **TestHelper** — shared test helper utilities
+- **TestSuites** — test suite definitions used by CI
+
+### Tech stack
+
+Instrumented tests use:
+
+- **Espresso** — for legacy View-based UI
+- **Jetpack Compose Testing** — for Compose layouts
+- **JUnit 4** — for test structure and assertions
+- **Firebase Test Lab** — for running tests in CI across device configurations
+
+## UI automator tests
+
+The `ui_automator_test_util/` module contains shared utilities for UI Automator-based tests. It provides:
+
+- **Robot classes** for common screens: `HomeRobot`, `LoginRobot`, `CountriesRobot`
+- **Test constants** (`TestConstants.kt`) for timeouts and other shared values
+
+These robots are shared across the main test suite and the `release_tests` module, which runs against production builds.
+
+## Screenshot tests
+
+Screenshot testing uses the AndroidX Compose Screenshot Test plugin, enabled via:
+
+```groovy
+android.experimental.enableScreenshotTest=true
+```
+
+Screenshot test sources live in `app/src/screenshotTest/` and use Compose's `@Preview` tooling. To run screenshot tests:
+
+```bash
+./gradlew validateDebugScreenshotTest
+```
+
+## Shared test code
+
+The `shared-test-code/` module contains fakes, mocks, and DI modules shared between unit tests and instrumented tests. This avoids duplicating test infrastructure. Key contents include:
+
+- **Fakes** — fake implementations of interfaces (e.g., `FakeVpnUiDelegate`, `FakeWorkManager`, `FakeFlow`)
+- **Mocks** — mock server setup (`MockRequestDispatcher`, `MockWebServerCertificates`)
+- **DI modules** — `SharedTestAppModule` and `MockCoreFeaturesModule` for test Hilt configuration
+- **Test settings** — `TestSettings.kt` for configuring test behaviour
+
+Both `testImplementation(projects.sharedTestCode)` and `androidTestImplementation(projects.sharedTestCode)` are declared as dependencies in `app/build.gradle`.
+
+## Code coverage
+
+Coverage is measured with JaCoCo. The `jacocoTestReport` task produces XML and HTML reports:
+
+```bash
+./gradlew jacocoTestReport
+```
+
+Coverage reports are written to `app/build/reports/jacoco/jacocoTestReport/`.
+
+To print a summary of instruction coverage to the console:
+
+```bash
+./gradlew coverageReport
+```
+
+### Converting JaCoCo reports to Cobertura format
+
+The `jacocoConverter.py` script at the root of the repository converts JaCoCo XML output to Cobertura format, which is compatible with GitLab's coverage visualization:
+
+```bash
+python jacocoConverter.py app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml app/src/main/java
+```
+
+The first argument is the JaCoCo XML report path; the second is the source root directory.
+
+## Running all checks locally
+
+Run the full set of checks that CI executes before opening a pull request:
+
+```bash
+./gradlew checkstyle detekt test androidTest
+```

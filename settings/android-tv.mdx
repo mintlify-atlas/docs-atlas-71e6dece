@@ -1,0 +1,95 @@
+---
+title: "Proton VPN on Android TV"
+description: "Set up and use Proton VPN on Android TV and Amazon Fire TV devices, including supported features and remote navigation."
+keywords: ["Android TV", "Fire TV", "Amazon", "leanback", "television", "remote control", "TV"]
+---
+
+Proton VPN has a dedicated TV interface built for large-screen devices. The TV app is the same APK as the phone app — the interface switches automatically based on the device type detected at launch.
+
+## Compatible devices
+
+Proton VPN supports two families of TV devices:
+
+- **Android TV** — any device that reports the `android.software.leanback` or `android.hardware.type.television` feature, including Google TV devices, NVIDIA SHIELD, and compatible set-top boxes.
+- **Amazon Fire TV** — devices that report the `amazon.hardware.fire_tv` system feature. This includes Fire TV Stick (all generations), Fire TV Cube, and Fire TV-enabled smart TVs.
+
+<Note>
+  Fire TV is based on a forked version of Android. While most features work identically, Fire TV devices are detected using a separate hardware feature flag (`amazon.hardware.fire_tv`) and may receive features via a separate distribution channel. If a feature is gated behind a feature flag, it may roll out to Fire TV and Android TV on different schedules.
+</Note>
+
+## How the TV UI differs from mobile
+
+The TV interface uses the Android Leanback UI framework and is optimised for 10-foot viewing and D-pad navigation. Key differences from the phone interface:
+
+| Aspect | Mobile | TV |
+|--------|--------|----|
+| Navigation | Bottom tab bar | Leanback row-based home screen |
+| Settings | Full-screen settings screen with categories | Settings cards in a dedicated row on the home screen |
+| Server selection | Map + list with search | Interactive world map with country highlight |
+| Connection | Tap to connect | Select a country card and confirm |
+| Theme | Light / Dark / System | Fixed dark theme |
+| Widget | Home screen widget | Not available |
+
+## Supported features on TV
+
+The following features are available in the TV interface:
+
+- Connect and disconnect from VPN servers
+- Country selection via the interactive world map
+- Protocol selection (Smart, WireGuard UDP, WireGuard TCP, Stealth)
+- Split tunneling (app exclusions)
+- LAN connections toggle
+- IPv6 toggle (when enabled via feature flag)
+- NetShield ad and malware blocker (when enabled via feature flag)
+- Custom DNS (when enabled via feature flag)
+- Auto-connect on boot
+- Bug report submission
+
+## Features not available on TV
+
+The following features from the mobile app are not present in the TV interface:
+
+- Home screen widget
+- App icon customisation
+- Theme selection (TV always uses dark mode)
+- Default connection setting (beyond auto-connect on boot)
+- Always-on VPN / kill switch system setting shortcut
+- In-app notification settings (managed via the Android TV system)
+- Proton account screen
+
+## Navigating with a remote control
+
+The TV interface is designed for D-pad (directional pad) navigation:
+
+| Remote action | Effect |
+|---------------|--------|
+| **D-pad up / down / left / right** | Move focus between items |
+| **Select / OK** | Activate the focused item |
+| **Back** | Go back or close a settings screen |
+| **Menu** | Open the contextual options menu (on supported remotes) |
+
+Settings are displayed as focusable cards in a dedicated row on the home screen. Use the D-pad to scroll to the settings row and select a card to open that setting's sub-screen.
+
+## Logging in on TV
+
+<Steps>
+  <Step title="Open the app">
+    Launch Proton VPN from your TV's app launcher or home screen.
+  </Step>
+  <Step title="Select Sign in">
+    On the welcome screen, navigate to **Sign in** and press **OK**.
+  </Step>
+  <Step title="Enter your credentials">
+    Use the on-screen keyboard to type your Proton account email address and password. You can also use a connected Bluetooth keyboard or the Fire TV / Android TV remote app on your phone to type more quickly.
+  </Step>
+  <Step title="Complete two-factor authentication">
+    If two-factor authentication is enabled on your account, enter your TOTP code using the on-screen keyboard when prompted.
+  </Step>
+  <Step title="Start browsing servers">
+    After signing in, the home screen shows the world map and your available countries. Navigate to a country card and press **OK** to connect.
+  </Step>
+</Steps>
+
+<Note>
+  If you have a Proton Pass or authenticator app on your phone, you can copy the 2FA code and paste it on the TV using the remote app for your device.
+</Note>

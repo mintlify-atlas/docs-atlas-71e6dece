@@ -1,0 +1,65 @@
+---
+title: "SecureCore"
+description: "Route your traffic through Proton-owned servers in Iceland, Switzerland, or Sweden for protection against compromised exit nodes."
+---
+
+SecureCore is a multi-hop VPN feature that routes your traffic through two VPN servers instead of one. Your connection first passes through a Proton-owned **entry server** in a privacy-friendly country, then exits through a standard **exit server** in the country you have selected.
+
+## How SecureCore works
+
+In a standard VPN connection, a compromised exit server or a network-level attacker close to the exit server can observe your destination traffic and potentially correlate it to your IP address.
+
+SecureCore defends against this by separating the entry and exit points:
+
+1. Your device connects to a Proton-owned SecureCore server in **Iceland**, **Switzerland**, or **Sweden**.
+2. From that server, traffic is forwarded to the exit server in your chosen country.
+3. Your real IP address is only ever seen by the SecureCore entry server, not by the exit server or anyone monitoring the exit network.
+
+Because Proton owns and operates the entry servers in privacy-friendly jurisdictions, it is significantly harder for a network-level adversary to correlate your IP address with the traffic leaving the exit server.
+
+## Why use SecureCore
+
+SecureCore is most useful when:
+
+- You are connecting through an **untrusted network** such as hotel, airport, or public Wi-Fi
+- You are concerned about **ISP surveillance** or government-level monitoring at the exit location
+- You want protection even if an **exit node is compromised** by a third party
+- You need stronger protection in a **high-risk country** where the exit server may be subject to legal pressure
+
+For everyday browsing on trusted networks, a standard single-hop connection is sufficient.
+
+## Enabling SecureCore
+
+<Steps>
+  <Step title="Open the Countries list">
+    Tap **Countries** in the bottom navigation bar.
+  </Step>
+  <Step title="Enable the SecureCore toggle">
+    Tap the **SecureCore** toggle at the top of the Countries list. The list updates to show only SecureCore-compatible exit countries.
+  </Step>
+  <Step title="Choose an exit country">
+    Tap a country to connect. The app automatically selects the best available entry server (Iceland, Switzerland, or Sweden) for your chosen exit country.
+
+    To choose a specific entry server, expand the country and select the entry-exit pair you prefer.
+  </Step>
+</Steps>
+
+You can also create a [Connection profile](/connections/connection-profiles) with SecureCore pre-configured for one-tap access.
+
+## Performance trade-offs
+
+<Warning>
+  SecureCore connections are slower than standard single-hop connections. Routing through two servers adds latency at each hop. Expect noticeably higher ping times and some reduction in throughput compared to a direct connection.
+</Warning>
+
+The performance impact depends on the geographic distance between your location, the entry server, and the exit server. For latency-sensitive tasks like video calls or gaming, use a standard connection instead.
+
+## Plan requirement
+
+<Note>
+  SecureCore requires a paid Proton VPN plan. Free users cannot connect to SecureCore servers. Tapping a SecureCore server while on a free plan displays an upgrade prompt.
+</Note>
+
+## SecureCore in profiles and recents
+
+SecureCore connections are stored in recents and can be saved as profiles. The `ConnectIntent.SecureCore` intent records both the exit country and the entry country, so reconnecting from a recent or profile uses the same server pair.

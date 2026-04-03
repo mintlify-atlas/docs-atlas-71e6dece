@@ -1,0 +1,185 @@
+---
+title: "Common issues"
+description: "Solutions to the most frequent problems reported by Proton VPN for Android users."
+---
+
+<AccordionGroup>
+  <Accordion title="Can't connect to VPN">
+    Connection failures are usually caused by network conditions, protocol selection, or a temporary server issue.
+
+    **Check your internet connection first**
+
+    Disconnect from VPN and confirm you can reach a website or ping a server. The VPN tunnel requires a working underlying connection.
+
+    **Try a different protocol**
+
+    Some networks block specific protocols. Go to **Settings > Protocol** and try each option:
+
+    - **WireGuard (UDP)** — fastest and works on most networks
+    - **WireGuard TCP** — TCP traffic is less commonly blocked than UDP; good for corporate or hotel Wi-Fi
+    - **Stealth (WireGuard TLS)** — disguises VPN traffic as HTTPS; use this on heavily restricted networks
+    - **Smart** — lets the app probe available protocols and ports automatically, then picks the best one
+
+    **Enable Smart protocol**
+
+    Smart protocol runs port-scanning before connecting (`ServerAvailabilityCheck`) and selects a combination of protocol and port that is reachable from your network. Enable it under **Settings > Protocol > Smart**.
+
+    **Disable antivirus or firewall software**
+
+    Third-party security apps sometimes block VPN tunnel traffic. Temporarily disable them to check whether they are the cause.
+
+    <Note>
+      If the connection fails with an "Authentication failed" error, your session credentials may be stale. Log out and log back in to refresh them.
+    </Note>
+  </Accordion>
+
+  <Accordion title="VPN keeps disconnecting">
+    Unexpected disconnections are most often caused by battery optimisation killing the VPN process or by the network switching between Wi-Fi and mobile data.
+
+    **Enable the kill switch**
+
+    The kill switch blocks all internet traffic the moment the tunnel drops, then keeps it blocked until you reconnect. This prevents accidental data leaks and makes disconnections visible immediately.
+
+    Go to **Settings > Kill switch** and enable it.
+
+    **Exempt Proton VPN from battery optimisation**
+
+    Android's battery saver can terminate background processes, including the VPN service. To prevent this:
+
+    1. Open **Android Settings > Apps > Proton VPN**.
+    2. Tap **Battery**.
+    3. Select **Unrestricted** (the label varies by manufacturer — look for "No restrictions" or "Don't optimise").
+
+    The exact path differs across device manufacturers (Samsung, Xiaomi, OnePlus, etc.). Search for "battery optimisation" in your device's settings app if the steps above don't match.
+
+    **Check for network switching**
+
+    If your device switches between Wi-Fi and a mobile network, the VPN tunnel's source IP changes and the connection is dropped. Enable **Always-on VPN** in Android's built-in VPN settings (**Android Settings > Network & internet > VPN**) to auto-reconnect after a network change.
+
+    <Tip>
+      Enable Smart protocol. It can reconnect faster after network changes than a fixed protocol because it re-probes available ports.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Slow speeds">
+    VPN speed depends on the server load, the distance between you and the server, and the protocol in use.
+
+    **Try a different server**
+
+    Each server entry in the server list shows a load percentage. Servers above roughly 80% load tend to be slower. Connect to a lightly loaded server in a nearby country to reduce latency.
+
+    **Switch to WireGuard (UDP)**
+
+    WireGuard (UDP) has the smallest overhead and generally delivers the highest throughput. Go to **Settings > Protocol** and select **WireGuard**.
+
+    **Turn off SecureCore**
+
+    SecureCore routes traffic through two hops (a Proton-owned entry server plus the exit server). The extra hop adds latency and reduces throughput. Disable it if speed is more important than the additional routing protection.
+
+    **Check your base connection speed**
+
+    Test your speed without VPN using a speed test app. If the base speed is already low (e.g., a congested mobile network), the VPN cannot improve it.
+
+    <Note>
+      Free plan users connect via shared free servers. Upgrading to Proton VPN Plus gives access to a larger pool of servers, which typically results in lower load and higher speeds.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Can't access local network devices while on VPN">
+    By default, VPN routes all traffic — including traffic destined for your local network (LAN) — through the tunnel. This means your phone cannot reach printers, NAS drives, smart home devices, or other devices on the same Wi-Fi network.
+
+    **Enable LAN connections**
+
+    Go to **Settings > Advanced > Allow LAN connections** and toggle it on. This adds a routing exception so that traffic to RFC 1918 address ranges (192.168.x.x, 10.x.x.x, 172.16–31.x.x) bypasses the VPN tunnel.
+
+    <Warning>
+      When LAN connections are allowed, devices on your local network can initiate connections to your phone. Only enable this on networks you trust.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="App crashes or freezes">
+    Crashes and freezes are usually resolved by clearing cached data or reinstalling the app. If they persist, submitting a bug report with logs helps the team diagnose the problem.
+
+    **Clear the app cache**
+
+    1. Open **Android Settings > Apps > Proton VPN**.
+    2. Tap **Storage & cache**.
+    3. Tap **Clear cache**.
+
+    Do not tap "Clear storage" unless instructed — that removes all local data including saved settings.
+
+    **Restart the app**
+
+    Force-stop the app from Android Settings, then reopen it.
+
+    **Reinstall the app**
+
+    Uninstall Proton VPN, then download a fresh copy from [Google Play](https://play.google.com/store/apps/details?id=ch.protonvpn.android) or [GitHub Releases](https://github.com/ProtonVPN/android-app/releases). Your account and settings are stored server-side and will be restored after you log back in.
+
+    **Submit a bug report**
+
+    If the crash is reproducible, submit a bug report with logs attached immediately after it occurs. The logs capture the state of the app at the time of the crash. See [Submit a bug report](/troubleshooting/bug-reports) for instructions.
+  </Accordion>
+
+  <Accordion title="Server in maintenance">
+    Proton VPN takes individual servers offline periodically for maintenance. When this happens while you are connected, the app detects it automatically.
+
+    **What happens automatically**
+
+    The `MaintenanceTracker` component polls the status of your connected server at regular intervals. When it detects that the server's connecting domain has gone offline, it triggers a fallback sequence (`VpnConnectionErrorHandler.onServerInMaintenance`). The app searches for a compatible alternative server — preferring the same country, city, and tier — and reconnects without requiring any action from you.
+
+    A notification or in-app dialog informs you of the server switch.
+
+    **Finding another server manually**
+
+    If automatic reconnection does not succeed or if you want to choose the replacement yourself:
+
+    1. Disconnect from the current server.
+    2. Open the server list.
+    3. Servers that are in maintenance show a wrench icon and cannot be selected.
+    4. Pick any other available server in the same country.
+
+    <Tip>
+      Using **Fastest** or a country-level connection (rather than connecting to a specific server) means the app always routes you to the best available server in that country, so maintenance on a single server has no visible impact.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Max sessions reached">
+    Each Proton VPN plan includes a limit on the number of simultaneous VPN connections.
+
+    | Plan | Simultaneous connections |
+    |------|--------------------------|
+    | Free | 1 |
+    | Plus | 10 |
+
+    When you try to connect and all slots are in use, the app shows a "Maximum sessions reached" error (internally `ErrorType.MAX_SESSIONS`). A full-screen dialog is shown rather than a simple snack bar.
+
+    **To resolve this**
+
+    - Disconnect Proton VPN on another device.
+    - Or sign in to [account.proton.me](https://account.proton.me) and end sessions remotely from **Account > VPN > Active sessions**.
+
+    <Note>
+      If you are on the Free plan and want to connect on more devices simultaneously, upgrading to Plus raises the limit to 10 connections.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Connection restrictions">
+    Some servers enforce connection restrictions. The app tracks two restriction types (defined in `VpnConnectionRestriction`):
+
+    | Restriction | What it means |
+    |-------------|---------------|
+    | `P2P` | Peer-to-peer traffic (e.g. BitTorrent) is not allowed on this server. Use a P2P-enabled server instead — these are labelled in the server list. |
+    | `Streaming` | The server is not optimised for streaming. Streaming-enabled servers (labelled with a streaming icon) are available on the Plus plan. |
+
+    **How to find the right server**
+
+    1. Open the server list.
+    2. Use the **Features** filter to show only servers with **P2P** or **Streaming** support.
+    3. Connect to one of those servers.
+
+    <Note>
+      Streaming servers are available on Proton VPN Plus only.
+    </Note>
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,87 @@
+---
+title: "VPN protocols"
+description: "Learn about the VPN protocols available in Proton VPN for Android and how to choose the right one."
+---
+
+Proton VPN for Android supports several VPN protocols. The protocol controls how your device establishes and encrypts the VPN tunnel. Each option involves different trade-offs between speed, compatibility, and censorship resistance.
+
+<Note>
+  Smart protocol is recommended for most users. It automatically selects the best available protocol for your network without any manual configuration.
+</Note>
+
+## Available protocols
+
+<Tabs>
+  <Tab title="Smart">
+    Smart protocol automatically tests and selects the best protocol for your current network conditions. It tries protocols in order of preference — starting with WireGuard UDP — and falls back to alternatives if a protocol is blocked or unavailable.
+
+    **How it works:**
+    - Probes available ports and protocols at connection time
+    - Falls back through WireGuard UDP → WireGuard TCP → WireGuard TLS (Stealth) as needed
+    - Re-evaluates on each new connection
+
+    Smart protocol is the default and requires no manual intervention. Use it unless you have a specific reason to pin a particular protocol.
+  </Tab>
+  <Tab title="WireGuard">
+    WireGuard is a modern VPN protocol designed for simplicity and high performance. It uses state-of-the-art cryptography (ChaCha20, Poly1305, Curve25519) and has a significantly smaller code surface than older protocols.
+
+    Proton VPN supports WireGuard with three transmission options:
+
+    | Variant | Transport | Use case |
+    |---|---|---|
+    | WireGuard (UDP) | UDP | Default; fastest in most conditions |
+    | WireGuard TCP | TCP | Useful when UDP is blocked by a firewall |
+    | WireGuard TLS (Stealth) | TLS over TCP | Censorship resistance; disguises VPN traffic as regular HTTPS |
+
+    WireGuard is the recommended explicit choice if you want to pin a protocol and your network does not restrict UDP traffic.
+  </Tab>
+  <Tab title="Stealth (WireGuard TLS)">
+    Stealth is Proton VPN's name for WireGuard tunnelled over TLS. Because TLS traffic is indistinguishable from regular HTTPS, Stealth can bypass deep packet inspection (DPI) firewalls and VPN-blocking systems used in some networks and countries.
+
+    **When to use Stealth:**
+    - You are in a country or on a network that actively blocks VPN connections
+    - Standard WireGuard and WireGuard TCP both fail to connect
+    - You need censorship resistance alongside end-to-end encryption
+
+    Stealth has slightly higher latency than plain WireGuard UDP because of the additional TLS encapsulation. Smart protocol will fall back to Stealth automatically when needed.
+  </Tab>
+  <Tab title="ProTun">
+    ProTun (Proton Tunnel) is Proton VPN's own WireGuard-based tunnelling layer. It uses the same underlying WireGuard cryptography but runs through Proton's custom transport implementation. In API communications, ProTun is reported as WireGuard.
+
+    ProTun is available in the protocol selector when enabled by a feature flag. Its behaviour mirrors WireGuard but uses an alternate network stack for improved stability in specific network environments.
+  </Tab>
+</Tabs>
+
+## Protocol comparison
+
+| Protocol | Speed | Compatibility | Censorship resistance | Notes |
+|---|---|---|---|---|
+| Smart | Adapts automatically | Excellent | Yes (falls back to Stealth) | Recommended default |
+| WireGuard (UDP) | Fastest | Good | Low | Best speed on open networks |
+| WireGuard TCP | Good | Excellent | Moderate | Works through strict firewalls |
+| Stealth (WireGuard TLS) | Good | Excellent | High | Use when VPN is blocked |
+| ProTun | Good | Good | Moderate | Proton custom transport layer |
+
+## Changing the protocol
+
+You can change the protocol globally in **Settings**, or override it per connection profile.
+
+### Global setting
+
+<Steps>
+  <Step title="Open Settings">
+    Tap the **Settings** icon in the bottom navigation bar.
+  </Step>
+  <Step title="Select Protocol">
+    Tap **Protocol** under the Connection section.
+  </Step>
+  <Step title="Choose a protocol">
+    Select one of the available options. The change takes effect on your next connection.
+
+    If you are currently connected, disconnect and reconnect for the new protocol to be used.
+  </Step>
+</Steps>
+
+### Per-profile override
+
+Profiles can have their own protocol setting that overrides the global default. See [Connection profiles](/connections/connection-profiles) for details.

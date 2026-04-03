@@ -1,0 +1,100 @@
+---
+title: "Contributing to Proton VPN"
+description: "How to contribute to the Proton VPN Android app, including guidelines, code of conduct, and the pull request process."
+---
+
+The Proton VPN Android app is open source and available on [GitHub](https://github.com/ProtonVPN/android-app). Contributions are welcome — whether that's fixing bugs, improving existing features, or helping with translations.
+
+## What contributions are welcome
+
+- Bug fixes and regression fixes
+- Feature improvements that align with the project's architecture and tech stack
+- Performance improvements
+- Test coverage additions
+- Documentation corrections
+
+If you plan to work on a larger feature or refactor, consider opening an issue first to discuss the approach before investing time in implementation.
+
+## Guidelines
+
+When contributing, keep the following in mind:
+
+- Stick to the project's existing code style and naming conventions
+- The codebase is mostly written in Java, but the project is transitioning to Kotlin — new code should be written in Kotlin where possible
+- New features or large refactors should use the preferred tech stack: Kotlin, MVVM, data-binding, and coroutines
+- After adding or updating open source dependencies, run `gradlew updateLicensesJson` to update the attribution file
+
+## Copyright assignment
+
+<Note>
+By making a contribution to this project, you agree to the following terms:
+
+1. You assign any and all copyright related to the contribution to Proton AG.
+2. You certify that the contribution was created in whole by you.
+3. You understand and agree that this project and the contribution are public, and that a record of the contribution (including all personal information you submit with it) is maintained indefinitely and may be redistributed with this project or the open source licenses involved.
+</Note>
+
+## Opening a pull request
+
+<Steps>
+  <Step title="Fork and clone the repository">
+    Fork the [android-app repository](https://github.com/ProtonVPN/android-app) on GitHub, then clone your fork locally.
+  </Step>
+  <Step title="Create a branch">
+    Create a feature or fix branch from the latest `development` branch.
+  </Step>
+  <Step title="Make your changes">
+    Follow the [code style](/contributing/code-style) and [build instructions](/contributing/build-instructions) to set up your environment. Write tests where appropriate — see the [testing guide](/contributing/testing) for how to run them locally.
+  </Step>
+  <Step title="Update license attributions if needed">
+    If you added or updated any open source dependencies, run:
+
+    ```bash
+    ./gradlew updateLicensesJson
+    ```
+  </Step>
+  <Step title="Submit your pull request">
+    Push your branch and open a pull request against the `development` branch. Describe what the change does and why, and reference any related issues.
+  </Step>
+</Steps>
+
+## CI checks
+
+When you open a pull request, the internal CI pipeline automatically runs the following checks:
+
+<AccordionGroup>
+  <Accordion title="Checkstyle">
+    Enforces the Java code style defined in `ProtonStyle.xml`. Run locally with:
+
+    ```bash
+    ./gradlew checkstyle
+    ```
+  </Accordion>
+  <Accordion title="Detekt">
+    Static analysis for Kotlin code. Run locally with:
+
+    ```bash
+    ./gradlew detekt
+    ```
+  </Accordion>
+  <Accordion title="Unit tests">
+    Runs all JVM unit tests. Run locally with:
+
+    ```bash
+    ./gradlew test
+    ```
+  </Accordion>
+  <Accordion title="Instrumented tests">
+    Runs Android instrumented tests. Run locally with:
+
+    ```bash
+    ./gradlew androidTest
+    ```
+  </Accordion>
+</AccordionGroup>
+
+All CI checks must pass before a pull request can be merged.
+
+## Code ownership
+
+All files in the repository are owned by the `@ProtonVPN/groups/android-developers` team, who are responsible for reviewing and merging pull requests.

@@ -1,0 +1,132 @@
+---
+title: "Connection profiles"
+description: "Save and reuse connection configurations with custom server, protocol, and feature settings."
+---
+
+Connection profiles let you save a complete VPN configuration — server, protocol, NetShield state, NAT type, LAN settings, and more — under a name you choose. Profiles appear on the home screen for one-tap access.
+
+## What profiles store
+
+Each profile stores:
+
+- **Name, colour, and icon** — for visual identification on the home screen
+- **Connection type and location** — fastest globally, fastest in a country, fastest in a city or state, a specific server, SecureCore pair, or P2P server
+- **Settings overrides** — protocol, NetShield, NAT type, LAN connections, custom DNS
+- **Auto-open target** (optional) — an app or URL to open automatically after connecting
+
+Profiles are per-account. They are removed from the device if the associated account is removed.
+
+## Profile types
+
+When creating a profile, you first choose its **type**, which determines what location options are available:
+
+| Type | Description |
+|---|---|
+| Standard | Connect to the fastest server in a country, city, state, or to a specific server |
+| SecureCore | Double-hop through a Proton-owned entry server; choose exit and entry countries |
+| P2P | Same as Standard but restricted to servers that allow peer-to-peer traffic |
+| Gateway | Connect to a named gateway (enterprise networks) |
+
+## Creating a profile
+
+<Steps>
+  <Step title="Open Profiles">
+    Tap **Profiles** in the bottom navigation bar, then tap **Add new profile** (or the **+** button).
+  </Step>
+  <Step title="Name your profile">
+    Enter a name for the profile. Choose a colour and icon to make it easy to identify at a glance.
+  </Step>
+  <Step title="Select type and location">
+    Choose the connection type (Standard, SecureCore, P2P, or Gateway), then select the country, city, state, or specific server you want to connect to.
+
+    For SecureCore, you also choose the entry country. Leave it on **Fastest** to let the app pick the best entry server automatically.
+  </Step>
+  <Step title="Configure features and settings">
+    Set the per-profile overrides for this profile:
+
+    - **NetShield** — enable or disable ad and tracker blocking
+    - **Protocol** — override the global protocol setting (Smart, WireGuard, WireGuard TCP, Stealth, or ProTun variants)
+    - **NAT type** — Moderate or Strict
+    - **LAN connections** — allow or block access to local network devices while connected
+    - **Custom DNS** — use a custom DNS server for this profile
+    - **Auto-open** — optionally launch an app or URL after connecting
+
+    Any setting left at its default inherits the global value from **Settings**.
+  </Step>
+  <Step title="Save the profile">
+    Tap **Save**. The profile appears on the home screen and in the Profiles list.
+  </Step>
+</Steps>
+
+## Using profiles from the home screen
+
+Saved profiles appear as cards on the home screen. Tap a profile card to connect using its saved configuration. The app applies all of the profile's overrides — protocol, NetShield, NAT, and DNS — for that connection.
+
+If you are already connected to a different server, tapping a profile card disconnects the current session and reconnects using the profile's settings.
+
+## Editing a profile
+
+<Steps>
+  <Step title="Open Profiles">
+    Tap **Profiles** in the bottom navigation bar.
+  </Step>
+  <Step title="Open profile options">
+    Long-press the profile card, or tap the three-dot menu on the profile.
+  </Step>
+  <Step title="Tap Edit">
+    Tap **Edit** to open the profile editor. You can change any field: name, colour, icon, location, or settings overrides.
+  </Step>
+  <Step title="Save changes">
+    Tap **Save**. If you are currently connected using this profile, you may be prompted to reconnect so the changes take effect.
+  </Step>
+</Steps>
+
+## Deleting a profile
+
+<Steps>
+  <Step title="Open Profiles">
+    Tap **Profiles** in the bottom navigation bar.
+  </Step>
+  <Step title="Open profile options">
+    Long-press the profile card, or tap the three-dot menu on the profile.
+  </Step>
+  <Step title="Tap Delete">
+    Tap **Delete** and confirm. The profile is removed immediately.
+
+    If you are connected using this profile at the time, the active connection is not interrupted — only the saved profile entry is removed.
+  </Step>
+</Steps>
+
+## Settings overrides in detail
+
+Each profile carries a `SettingsOverrides` object that can specify values for the following settings independently of the global defaults:
+
+<AccordionGroup>
+  <Accordion title="Protocol">
+    Choose a specific protocol for this profile instead of inheriting the global setting. For example, you can pin one profile to **Stealth** for use on restrictive networks while keeping the global setting on **Smart**.
+
+    Available options: Smart, WireGuard (UDP), WireGuard TCP, Stealth (WireGuard TLS), and ProTun variants.
+
+    See [VPN protocols](/connections/protocols) for a full description of each option.
+  </Accordion>
+  <Accordion title="NetShield">
+    Enable or disable DNS-based ad and tracker blocking for this profile. Useful if you need blocking disabled for a specific use case (for example, a gaming profile) without changing the global setting.
+  </Accordion>
+  <Accordion title="NAT type">
+    **Moderate NAT** (randomized NAT disabled) assigns consistent port mappings and is required for some online games and peer-to-peer applications.
+
+    **Strict NAT** (randomized NAT enabled) rotates port assignments for improved privacy at the cost of compatibility with some P2P apps.
+  </Accordion>
+  <Accordion title="LAN connections">
+    Controls whether devices on your local network (printers, NAS drives, smart home devices) remain reachable while the VPN is active. Enable this if you need local network access on a per-profile basis without turning it on globally.
+  </Accordion>
+  <Accordion title="Custom DNS">
+    Override the DNS server used for this profile's connection. Useful if a profile is intended for a specific network that requires a particular DNS resolver.
+
+    See [Custom DNS](/features/custom-dns) for configuration details.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Use profiles to create purpose-built configurations: a **streaming** profile pinned to a streaming-optimised server, a **P2P** profile for torrenting, and a **travel** profile using Stealth protocol for restrictive networks.
+</Tip>

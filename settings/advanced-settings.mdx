@@ -1,0 +1,89 @@
+---
+title: "Advanced settings"
+description: "Fine-tune VPN Accelerator, IPv6, alternative routing, app exclusions, and always-on VPN on your Android device."
+keywords: ["advanced", "VPN Accelerator", "IPv6", "split tunneling", "app exclusions", "always-on VPN", "kill switch", "alternative routing"]
+---
+
+Open **Settings → Advanced** to access settings that affect performance and network-level behaviour. Most users can leave these at their defaults.
+
+<Info>
+  If a profile is active and overrides any of these settings, a banner at the top of the Advanced screen shows the profile name. The displayed values reflect the profile's settings, not your global preferences.
+</Info>
+
+## VPN Accelerator
+
+VPN Accelerator is a Proton technology that uses multi-path routing and other optimisations to improve speeds, especially over long-distance or high-latency connections.
+
+VPN Accelerator has its own entry in the main **Settings** screen under the **Connection** category — it is not nested inside Advanced. It is enabled by default.
+
+<Warning>
+  VPN Accelerator requires a paid Proton VPN plan. Free users see an upgrade prompt when tapping this setting.
+</Warning>
+
+A reconnect is required after toggling VPN Accelerator.
+
+## Alternative routing (DoH)
+
+**Alternative routing** sends API traffic through DNS-over-HTTPS (DoH) when the standard Proton API endpoint is blocked. This setting does not affect VPN tunnel traffic — it only helps the app reach Proton's servers to authenticate and load server lists.
+
+Toggle this setting under **Settings → Advanced**. It is enabled by default.
+
+<Note>
+  Leave alternative routing enabled if you are in a region where access to Proton services is restricted.
+</Note>
+
+## IPv6 support
+
+When **IPv6** is enabled, the VPN tunnel carries both IPv4 and IPv6 traffic. When disabled, IPv6 traffic is blocked inside the tunnel and falls back to IPv4 only.
+
+<Warning>
+  Disabling IPv6 can cause connectivity issues on networks that rely on IPv6. Only disable this setting if you have a specific reason to do so.
+</Warning>
+
+IPv6 support is controlled by a feature flag and may not appear in all builds.
+
+## App exclusions (split tunneling)
+
+Split tunneling lets you choose which apps use the VPN tunnel and which connect directly to the internet. You can find this in **Settings → Split tunneling**, under the **Features** category.
+
+Two modes are available:
+
+| Mode | Behaviour |
+|------|-----------|
+| Standard (exclude only) | All apps use the VPN except those you add to the exclusion list. |
+| Inverse (include only) | Only the apps you add to the list use the VPN; all other apps connect directly. |
+
+You can exclude apps and IP address ranges independently.
+
+<Warning>
+  Apps excluded from the VPN send their traffic outside the encrypted tunnel. Their real IP address is visible to the services they connect to.
+</Warning>
+
+Split tunneling requires a paid Proton VPN plan. Changes take effect on the next connection.
+
+## Always-on VPN and kill switch
+
+Always-on VPN is an Android system feature that keeps the VPN connected at all times and prevents traffic from leaking if the connection drops. The kill switch (which blocks all internet traffic when the VPN is off) is part of the same system setting.
+
+<Steps>
+  <Step title="Open the kill switch setting">
+    In Proton VPN, go to **Settings → Kill switch** (under the **Features** category). Tap the row to be taken to the correct place in Android system settings.
+  </Step>
+  <Step title="Enable Always-on VPN">
+    In the Android **VPN** system settings screen, find **Proton VPN** in the list of installed VPN apps and tap the gear icon next to it.
+  </Step>
+  <Step title="Turn on Always-on VPN">
+    Enable the **Always-on VPN** toggle. Optionally enable **Block connections without VPN** to activate the kill switch.
+  </Step>
+  <Step title="Return to Proton VPN">
+    Go back to Proton VPN. The app will reconnect automatically according to the system setting.
+  </Step>
+</Steps>
+
+<Warning>
+  Enabling **Block connections without VPN** (the kill switch) means your device will have no internet access if Proton VPN cannot connect. This includes when the app is updating or the device is rebooting.
+</Warning>
+
+<Note>
+  Always-on VPN is only available on Android 7.0 (Nougat) and later.
+</Note>

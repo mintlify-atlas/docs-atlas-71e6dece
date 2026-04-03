@@ -1,0 +1,82 @@
+---
+title: "Protocol settings"
+description: "Choose the VPN protocol that best balances speed, reliability, and the ability to bypass firewalls on your Android device."
+keywords: ["protocol", "WireGuard", "IKEv2", "Smart", "Stealth", "TLS", "NAT", "LAN", "gaming"]
+---
+
+Open **Settings → Protocol** to change the VPN protocol Proton VPN uses. Your selection is saved when you navigate back; a reconnect is required for it to take effect on an active connection.
+
+<Info>
+  If a profile overrides the global protocol setting, a banner at the top of Settings shows which profile is active. The protocol shown in the row reflects the profile's setting, not your global preference.
+</Info>
+
+## Available protocols
+
+<Tabs>
+  <Tab title="Smart (recommended)">
+    Smart protocol automatically selects the best available protocol for your current network. It tries each protocol in order of performance and falls back to options that work on restricted networks.
+
+    **Best for:** most users who want reliable connectivity without manual configuration.
+
+    Smart is the default selection and is marked **Recommended** in the protocol list.
+  </Tab>
+  <Tab title="WireGuard UDP">
+    WireGuard over UDP is the fastest option when your network allows standard UDP traffic.
+
+    **Best for:** low-latency use cases such as gaming or streaming where your network does not block UDP.
+
+    This option appears under the **Speed** section in the protocol list.
+  </Tab>
+  <Tab title="WireGuard TCP">
+    WireGuard over TCP is more reliable on networks that restrict or shape UDP traffic, because TCP traffic is less commonly blocked.
+
+    **Best for:** networks where UDP is unreliable, such as some corporate Wi-Fi or mobile data connections.
+
+    This option appears under the **Reliability** section in the protocol list.
+  </Tab>
+  <Tab title="Stealth (WireGuard TLS)">
+    Stealth wraps the VPN traffic in TLS, making it look like ordinary HTTPS traffic. This is the most effective option for bypassing deep-packet inspection and censorship.
+
+    **Best for:** heavily restricted networks, regions with internet censorship, or any situation where other protocols are blocked.
+
+    This option also appears under the **Reliability** section.
+  </Tab>
+</Tabs>
+
+## NAT type
+
+The **NAT type** setting controls how Proton VPN handles Network Address Translation. You can find it in **Settings → Advanced → NAT type**.
+
+| NAT type | Description |
+|----------|-------------|
+| Strict (default) | Randomized NAT. Provides the strongest privacy by assigning a different source port for each connection. |
+| Moderate | Non-randomized NAT. Uses a consistent source port, which improves compatibility with peer-to-peer applications and online games that require NAT traversal. |
+
+<Warning>
+  Switching to Moderate NAT reduces the anonymity benefit of NAT because remote peers can correlate connections by source port. Only change this setting if Strict NAT is causing connectivity problems.
+</Warning>
+
+Moderate NAT requires a paid Proton VPN plan. A reconnect is required after changing the NAT type.
+
+## LAN connections
+
+The **Allow LAN connections** toggle is in **Settings → Advanced**. When enabled, traffic to private IP ranges (such as `192.168.x.x` and `10.x.x.x`) bypasses the VPN tunnel, letting you reach printers, NAS devices, smart home hubs, and other local devices while the VPN is connected.
+
+When LAN connections are enabled, an additional **Allow direct connections** checkbox becomes available. When checked, the app allows devices on your local network to initiate connections back to your device — useful if you are running a local server.
+
+<Warning>
+  Enabling LAN connections exposes your device to other hosts on the local network. On untrusted networks such as public Wi-Fi, leave this setting disabled.
+</Warning>
+
+LAN connections require a paid Proton VPN plan. A reconnect is required after toggling this setting.
+
+## How protocol choice affects performance
+
+| Concern | Recommended protocol |
+|---------|---------------------|
+| Lowest latency / highest throughput | WireGuard UDP |
+| Reliable connection on restrictive networks | WireGuard TCP |
+| Bypassing censorship or firewalls | Stealth (WireGuard TLS) |
+| Automatic best-effort | Smart |
+
+If you are unsure which protocol to use, leave the setting on **Smart** and Proton VPN will handle the selection for you.
